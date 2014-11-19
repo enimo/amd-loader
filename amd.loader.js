@@ -19,7 +19,7 @@
     var _module_map = {}, //已加载并define的模块，key为模块名(id)
         _loaded_map = {}; //已加载的js资源，key为资源URL
     
-    if (typeof _define_ !== 'undefined') {
+    if (typeof _define_ !== 'undefined' && typeof _require_ !== 'undefined') {
         return;
     }
 
@@ -34,13 +34,13 @@
     **/
     define = function (id, deps, factory) {
         //已经执行过define
-        if (hasProp(_module_map, id)) {
+        if (hasProp(_module_map, id.toString())) { //toString()用于考虑匿名define的情况
             return;
         }
 
         //后续考虑支持匿名define
         if (isFunction(id) && arguments.length === 1) {
-            var modName = '_anonymous_' + new Date()*1; //先暂存key，后modName会被覆盖
+            var modName = '_anonymous_' + id.toString(); //先暂存key，后modName会被覆盖
             _module_map[modName] = {
               id: modName,
               deps: null,
@@ -176,8 +176,11 @@
                 //非clouda环境下
                 //没有hashmap，直接加载url
                 if(typeof _CLOUDA_HASHMAP == 'undefined') {
-                    url = id + '.js';//没有模块表时，默认为url地址
-
+                    if(id.slice(-3) !== '.js') {
+                        url = id + '.js';//没有模块表时，默认为url地址
+                    } else {
+                        url = id;
+                    }
                 } else {
 
                     if(typeof _CLOUDA_HASHMAP.deps !== 'undefined'){
