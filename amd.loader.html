@@ -9,7 +9,16 @@
   <title>AMD Loader Demo</title>
   <meta name="description" content="angular-fis-kit, via enimo">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+  //封装日志函数
+    function log() {
+        var apc = Array.prototype.slice; //same as [].slice; Let Object{} to Array[]
+        console && console.log.apply(console, apc.call(arguments)); //return String, same like native console.log(), so choose it.
+    }
+  </script>
+
   <script type="text/javascript" src="./amd.loader.js"></script>
+
   <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
 </head>
 
@@ -27,7 +36,9 @@
 <!-- <script type="text/javascript" name="baidu-tc-cerfication" src="../static/cloudaapi/lightapp.js#6b20dcb7310fcf57936e64adb936c1ad"></script> -->
 
 <script type="text/javascript">
-  
+  require('test/def.alpha', function(a){  
+    log(a);
+  });
   /*
   window.bd && bd._qdc && bd._qdc.init({
     app_id: '6d8d300023d43e64d74f81c2'

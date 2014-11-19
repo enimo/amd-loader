@@ -19,18 +19,8 @@
     var _module_map = {}, //已加载并define的模块，key为模块名(id)
         _loaded_map = {}; //已加载的js资源，key为资源URL
     
-    //防止污染用户后加载的AMD/CMD加载器，统一先使用: _define_, _require_
     if (typeof _define_ !== 'undefined') {
         return;
-    } else {
-        win['_define_'] = define;
-        win['_require_'] = require;
-    } 
-
-    //测试阶段，如果没有加载过requirejs之类，可直接暴露到window
-    if (typeof define == 'undefined') {
-        win['define'] = win['_define_'];
-        win['require'] = win['_require_ '];
     }
 
     /**
@@ -43,21 +33,32 @@
      * @return void
     **/
     define = function (id, deps, factory) {
+        //已经执行过define
         if (hasProp(_module_map, id)) {
             return;
         }
 
-        //无依赖define
-        if (isFunction(deps)) { //!isArray(deps)
-            factory = deps;
-            deps = null;
-        }
+        //后续考虑支持匿名define
+        if (isFunction(id) && arguments.length === 1) {
+            var modName = '_anonymous_' + new Date()*1; //先暂存key，后modName会被覆盖
+            _module_map[modName] = {
+              id: modName,
+              deps: null,
+              factory: id
+            };
+        } else {
+            //无依赖define
+            if (isFunction(deps)) { //!isArray(deps)
+                factory = deps;
+                deps = null;
+            }
 
-        _module_map[id] = {
-          id: id,
-          deps: deps,
-          factory: factory
-        };
+            _module_map[id] = {
+              id: id,
+              deps: deps,
+              factory: factory
+            };
+        }
 
     };
 
@@ -73,7 +74,7 @@
         if (typeof deps === 'string') {
             deps = [deps];
         }
-        //Hack：兼容require的CMD模式
+        //Hack兼容：如无异步回调，则默认为require的CMD模式
         if (deps.length === 1 && arguments.length === 1) {
             return require['sync'](deps.join(''));
         }
@@ -84,7 +85,7 @@
         if (depsLen) {
             for(var i = 0; i < depsLen; i++) {
                 urls = getResources(deps[i]);
-                loadResource(urls, modDone);
+                loadResources(urls, modDone);
             }
         } else {
             allDone();
@@ -153,36 +154,50 @@
     /**
      * 根据模块名得到md5或pkg后的url路径
      * 并根据依赖表同时加载所有依赖模块
-     * @param {String, Array} ids 模块名或模块路径，url etc.
+     * @param {String} id 模块名或模块路径，url etc.
      * @access public
      * @return {Array} urls
     **/
-    function getResources(ids) {
-        if (typeof ids === 'string') {
-            ids = [ids];
+    function getResources(id) {
+        var ids = [];
+        if (typeof id === 'string') {
+            ids = [id];
+        } else {
+            return;//目前仅支持读取单个模块名或url
         }
         var urls = [],
             cache = {};
-
+        log('getResources id', id);
         (function(ids) { 
             for (var i = 0; i < ids.length; i++) {
-                var id = realpath(ids[i]);
+                var id = realpath(ids[i]),
+                    url = null;
 
-                if(typeof _CLOUDA_HASHMAP.deps !== 'undefined'){
-                    var mod = _CLOUDA_HASHMAP.deps[id] || {},
-                        deps_ids = mod['deps']; //递归得到所有依赖资源
-                    deps_ids && arguments.callee(deps_ids);
-                }
+                //非clouda环境下
+                //没有hashmap，直接加载url
+                if(typeof _CLOUDA_HASHMAP == 'undefined') {
+                    url = id + '.js';//没有模块表时，默认为url地址
 
-                if (typeof _CLOUDA_HASHMAP_.res !== 'undefined') {
-                    var res = _CLOUDA_HASHMAP_.res[id] || {},
-                        url = res.pkg ? res.pkg : (res.src || id);
-                    if (cache[url]) {
-                        continue;
+                } else {
+
+                    if(typeof _CLOUDA_HASHMAP.deps !== 'undefined'){
+                        var mod = _CLOUDA_HASHMAP.deps[id] || {},
+                            deps_ids = mod['deps']; //递归得到所有依赖资源
+                        deps_ids && arguments.callee(deps_ids);
                     }
-                    urls.push(url);
-                    cache[url] = true;
+
+                    if (typeof _CLOUDA_HASHMAP_.res !== 'undefined') {
+                        var res = _CLOUDA_HASHMAP_.res[id] || {};
+                        url = res.pkg ? res.pkg : (res.src || id);
+                    }
                 }
+
+                if (!url || cache[url]) {
+                    continue;
+                }
+                urls.push(url);
+                cache[url] = true;
+
             }
         })(ids);
 
@@ -190,31 +205,52 @@
     }
     
     /**
-     * 根据给出urls数组，加载资源，大于1时选用combo
+     * 根据给出urls数组，加载资源，大于1时选用combo，处理是否在clouda环境中使用不同加载方式
      * @params {function} callback
      * @params {Array} urls
      * @return void
     **/
-    function loadResource(urls, callback) {
+    function loadResources(urls, callback) {
 
-        var domain, src;
+        var src = null;
 
-        if (window.location.protocol === "http:") {
-            domain = "http://apps.bdimg.com";
+        log('loadResources urls', urls);
+
+        //非clouda环境下，不处理同时加载多个js，即每一个模块都单独加载，并只对应唯一个url
+        if(typeof _CLOUDA_HASHMAP == 'undefined') {
+            src = (urls.length === 1) ? urls[0] : null; //非clouda环境下不应该存在多个url，故直接置为null不处理
         } else {
-            domain = "https://openapi.baidu.com";
+            //clouda环境下，对依赖进行了预前处理，得到多个依赖是进行combo合并加载，但回调保留一个
+            var domain = '';
+            if (window.location.protocol === "http:") {
+                domain = "http://apps.bdimg.com";
+            } else {
+                domain = "https://openapi.baidu.com";
+            }
+            src = (urls.length === 1) ? urls[0] : '/cloudaapi/api-list.js?a=' + encodeURIComponent(urls.join(','));
+            src = domain + src;
         }
+        //处理好，回调和请求只保留一个
+        src && loadScript(src, callback);
+    }
 
-        src = (urls.length === 1) ? urls[0] : '/cloudaapi/api-list.js?a=' + encodeURIComponent(urls.join(','));
-
-        if (! (src in _loaded_map))  {//为外部调用loadRes()做缓存拦截，AMD已在require层拦截
-            _loaded_map[src] = true;
+     /**
+     * 根据唯一的url地址加载js文件
+     * @params {function} callback
+     * @params {string} url
+     * @return void
+    **/
+    function loadScript(url, callback) {
+        log('loadScript url', url);
+        if (! (url in _loaded_map)) {
+            //为外部调用loadRes()做缓存拦截，AMD已在require层拦截
+            _loaded_map[url] = true;
 
             var head = doc.getElementsByTagName('head')[0],
                 script = doc.createElement('script');
 
             script.type = 'text/javascript';
-            script.src = domain + src;
+            script.src = url;
             head.appendChild(script);
 
             if (isFunction(callback)) {
@@ -224,21 +260,24 @@
                     script.onreadystatechange = function() {
                         if (/loaded|complete/.test(script.readyState)) {
                             script.onreadystatechange = null;
-                            callback();
+                            callback && callback();
                         }
                     };
                 }
             }
+        } else {
+            callback && callback();
         }
 
     }
+
 
     /**
      * Same as php realpath, 获取绝对路径
      * @params {String} path
      * @return {String} realpath
     **/
-    function  realpath(path) {
+    function realpath(path) {
         var arr = [];
 
         if (path.indexOf('://') !== -1) {
@@ -264,7 +303,9 @@
         }
         path = path.join('/');
 
-        return path.indexOf('/') === 0 ? path : '/' + path;
+        return path;
+        //暂时不在path前加'/'
+        //return path.indexOf('/') === 0 ? path : '/' + path;
     }
 
     /**
@@ -298,8 +339,19 @@
         //_plugins_map.push(id);
     }
 
+    //防止污染用户后加载的AMD/CMD加载器，统一先使用: _define_, _require_
+    win['_define_'] = define;
+    win['_require_'] = require;
+
+    //测试阶段，如果没有加载过requirejs之类，可直接暴露到window
+    if (typeof window.define == 'undefined') {
+        win['define'] = win['_define_'];
+        win['require'] = win['_require_'];
+    }
+
     define.amd = {};
 
     define.version = '0.8';
+
 
 })(window, document);
