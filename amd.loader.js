@@ -27,6 +27,12 @@
         win['_require_'] = require;
     } 
 
+    //测试阶段，如果没有加载过requirejs之类，可直接暴露到window
+    if (typeof define == 'undefined') {
+        win['define'] = win['_define_'];
+        win['require'] = win['_require_ '];
+    }
+
     /**
      * Define function implement
      *
@@ -50,7 +56,7 @@
         _module_map[id] = {
           id: id,
           deps: deps,
-          factory: factory;
+          factory: factory
         };
 
     };
