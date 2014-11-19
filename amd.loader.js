@@ -17,8 +17,11 @@
     var require, define;
 
     var _module_map = {}, //已加载并define的模块，key为模块名(id)
-        _loaded_map = {}; //已加载的js资源，key为资源URL
+        _loaded_map = {}, //已加载的js资源，key为资源URL
+        _script_stack = [];//脚本onload堆栈压入，执行时pop, 不太安全...
     
+    var env = { debug: true }; //环境相关变量
+
     if (typeof _define_ !== 'undefined' && typeof _require_ !== 'undefined') {
         return;
     }
@@ -34,18 +37,24 @@
     **/
     define = function (id, deps, factory) {
         //已经执行过define
-        if (hasProp(_module_map, id.toString())) { //toString()用于考虑匿名define的情况
+        if (hasProp(_module_map, id)) { 
             return;
         }
-
+        //log('_script_stack', _script_stack);
         //后续考虑支持匿名define
         if (isFunction(id) && arguments.length === 1) {
-            var modName = '_anonymous_' + id.toString(); //先暂存key，后modName会被覆盖
+            var modName = '_anonymous_' + id.toString().slice(-50); //先暂存key，暂存function的后50字符
+            //匿名函数已经执行过define
+            if (hasProp(_module_map, modName)) { //toString()用于考虑匿名define的情况
+                //_script_stack.push(_module_map[modName]);
+                //return;
+            }
             _module_map[modName] = {
               id: modName,
               deps: null,
               factory: id
             };
+            _script_stack.push(_module_map[modName]);
         } else {
             //无依赖define
             if (isFunction(deps)) { //!isArray(deps)
@@ -58,6 +67,7 @@
               deps: deps,
               factory: factory
             };
+            _script_stack.push(_module_map[id]);
         }
 
     };
@@ -98,6 +108,7 @@
         }
 
         function allDone() {
+            log('allDone _module_map: ', _module_map);
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
                 exports.push(require['sync'](deps[index]));
@@ -137,11 +148,20 @@
 
         module['exports'] = exports = {};
         deps =  module.deps;
-
-        for(var depsLen =deps.length, i = 0; i < depsLen; i++) {
-            dep = deps[i];
-            args.push(dep === "module" ? module : (dep === "exports" ? exports : require['sync'](dep)));
-        }
+        if (deps) { //如果该模块存在依赖
+            for(var depsLen = deps.length, i = 0; i < depsLen; i++) {
+                dep = deps[i];
+                if (dep === "require") {
+                    args.push(require);
+                } else {
+                    args.push(dep === "module" ? 
+                        module : (dep === "exports" ? 
+                            exports : require['sync'](dep)
+                        )
+                    );
+                }
+            }
+        }//if deps
 
         var ret = module.factory.apply(undefined, args);
         if (ret !== undefined && ret !== exports) {
@@ -258,17 +278,34 @@
 
             if (isFunction(callback)) {
                 if (doc.addEventListener) {
-                    script.addEventListener("load", callback, false);
+                    script.addEventListener("load", onload, false);
                 } else { 
                     script.onreadystatechange = function() {
                         if (/loaded|complete/.test(script.readyState)) {
                             script.onreadystatechange = null;
-                            callback && callback();
+                            onload();
                         }
                     };
                 }
             }
         } else {
+            //已加载和执行过的脚本，直接执行回调
+            callback && callback();
+        }
+
+        //Notice: 这里onload()的触发是在define执行完之后的
+        function onload() {
+            log("onload exec")
+            //remove reduce mem leak
+            if (!env.debug) {
+                head.removeChild(script);
+            }
+            var id = url.slice(0, -3);
+            //_script_stack.push({ url: url, script: script, id: id });
+            var mod = _script_stack.pop();
+            log('mod', mod);
+            _module_map[id] = { deps: mod.deps, factory: mod.factory };
+            script = null;
             callback && callback();
         }
 
@@ -323,6 +360,14 @@
         return Object.prototype.toString.call(obj) === '[object Function]';
     }
 
+    function log() {
+        if (!env.debug) {
+            return;
+        }
+        //console.log("内部log");
+        var apc = Array.prototype.slice; //same as [].slice; Let Object{} to Array[]
+        console && console.log.apply(console, apc.call(arguments)); //return String, same like native console.log(), so choose it.
+    }
 
     /**
      * 依赖关系映射表数据结构：
@@ -347,7 +392,7 @@
     win['_require_'] = require;
 
     //测试阶段，如果没有加载过requirejs之类，可直接暴露到window
-    if (typeof window.define == 'undefined') {
+    if (env.debug && typeof window.define == 'undefined') {
         win['define'] = win['_define_'];
         win['require'] = win['_require_'];
     }

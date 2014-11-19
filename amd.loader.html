@@ -12,6 +12,7 @@
   <script>
   //封装日志函数
     function log() {
+        //console.log("外部log");
         var apc = Array.prototype.slice; //same as [].slice; Let Object{} to Array[]
         console && console.log.apply(console, apc.call(arguments)); //return String, same like native console.log(), so choose it.
     }
@@ -36,8 +37,12 @@
 <!-- <script type="text/javascript" name="baidu-tc-cerfication" src="../static/cloudaapi/lightapp.js#6b20dcb7310fcf57936e64adb936c1ad"></script> -->
 
 <script type="text/javascript">
-  require('test/def.alpha', function(a){  
+  //log("dadasd")
+  require(['test/def.calcu', 'test/def.e'], function(a, b){  
     log(a);
+    var sum = a.add(1,4);
+    log("sum: ", sum);
+    b.hello();
   });
   /*
   window.bd && bd._qdc && bd._qdc.init({
