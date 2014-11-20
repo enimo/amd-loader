@@ -52,3 +52,9 @@ A dependency-free module can define a direct object literal:
      }
    });
 ```
+
+## Future 
+
+I'll keep polishing this app and keep adding new features. If you have any problems when using this engine, please feel free to drop me an issue or contact me:
+
+* weibo: http://weibo.com/enimo
