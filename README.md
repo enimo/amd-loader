@@ -1,6 +1,6 @@
 # AMD-Loader
 
-A Simple AMD loader Implementation, a subset of Asynchronous Module Definition (AMD) API, and now serving for Baidu LightApp Loader.
+A Simple AMD loader Implementation, subset of Asynchronous Module Definition (AMD) API, and now serving for Baidu LightApp Loader.
 
 
 ## Getting Started

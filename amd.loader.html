@@ -38,31 +38,50 @@
 <!-- <script type="text/javascript" name="baidu-tc-cerfication" src="../static/cloudaapi/lightapp.js#6b20dcb7310fcf57936e64adb936c1ad"></script> -->
 
 <script type="text/javascript">
-  //log("dadasd")
-  require(['test/def.calcu', 'test/def.e'], function(a, b){  
-    log(a);
-    var sum = a.add(1,4);
-    log("sum: ", sum);
-    b.hello();
-  });
-  /*
-  window.bd && bd._qdc && bd._qdc.init({
-    app_id: '6d8d300023d43e64d74f81c2'
-  });
+    window.AMD = {};
 
-  
-  clouda.lightInit({
-    ak:null,
-    module:["smartBar"]
-  }, function(){
-      clouda.lego.smartBar.show();
-  });
-  
+    Events.mixTo(AMD);
 
-  clouda.lego._initSmartBar();
-  */
-  // 或者使用：
-  // http://lightapp/clouda/lightapp.html?bd_wd=1
+    AMD.on("done", function(e){
+      log("i am done: ", e);
+    });
+
+    AMD.on("done", function(e){
+      log("i am alse done: ", e);
+    });
+
+    AMD.on("loaded", function(e){
+      log("i am loaded: ", e.url);
+    });
+    //log("dadasd")
+    require(['test/def.calcu', 'test/def.e'], function(a, b){  
+      log(a);
+      var sum = a.add(1,4);
+      log("sum: ", sum);
+      b.hello();
+      
+      require('test/def.e', function(e){
+        e.hello();
+      })
+    });
+    /*
+    window.bd && bd._qdc && bd._qdc.init({
+      app_id: '6d8d300023d43e64d74f81c2'
+    });
+
+    
+    clouda.lightInit({
+      ak:null,
+      module:["smartBar"]
+    }, function(){
+        clouda.lego.smartBar.show();
+    });
+    
+
+    clouda.lego._initSmartBar();
+    */
+    // 或者使用：
+    // http://lightapp/clouda/lightapp.html?bd_wd=1
 </script> 
 
 </html>

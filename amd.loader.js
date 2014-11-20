@@ -36,39 +36,33 @@
      * @return void
     **/
     define = function (id, deps, factory) {
-        //已经执行过define
+        
+        //已经执行过define, 不再执行，不过一般在loadScript时已拦截，加载模块即不会再执行
         if (hasProp(_module_map, id)) { 
+            log("%cid 命中mod map factory缓存, 直接return: "+id, "color:green")
             return;
         }
-        //log('_script_stack', _script_stack);
-        //后续考虑支持匿名define
-        if (isFunction(id) && arguments.length === 1) {
-            var modName = '_anonymous_' + id.toString().slice(-50); //先暂存key，暂存function的后50字符
-            //匿名函数已经执行过define
-            if (hasProp(_module_map, modName)) { //toString()用于考虑匿名define的情况
-                //_script_stack.push(_module_map[modName]);
-                //return;
-            }
-            _module_map[modName] = {
-              id: modName,
-              deps: null,
-              factory: id
-            };
-            _script_stack.push(_module_map[modName]);
-        } else {
-            //无依赖define
-            if (isFunction(deps)) { //!isArray(deps)
-                factory = deps;
-                deps = null;
-            }
 
-            _module_map[id] = {
-              id: id,
-              deps: deps,
-              factory: factory
-            };
-            _script_stack.push(_module_map[id]);
+        //考虑支持的匿名define
+        if (isFunction(id) && arguments.length === 1) {
+            var modName = '_anonymous_' + id.toString().replace(/(\r|\n|\s)+/g, '').slice(-50); //先暂存key，暂存function的后50字符
+            factory = id;
+            id = modName;
+            deps = null;
+
+        //无依赖define
+        } else if (isFunction(deps) && arguments.length === 2) { 
+            factory = deps;
+            deps = null;
         }
+
+        log("id未命中mod map factory缓存, fac存入: ", id)
+        _module_map[id] = {
+          id: id,
+          deps: deps,
+          factory: factory
+        };
+        _script_stack.push(id);
 
     };
 
@@ -108,7 +102,7 @@
         }
 
         function allDone() {
-            log('allDone _module_map: ', _module_map);
+            log('allDone _module_map stack: ', _module_map);
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
                 exports.push(require['sync'](deps[index]));
@@ -143,9 +137,10 @@
 
         module = _module_map[id];
         if (hasProp(module, "exports")) {
+            log("%c模块命中mod map exports缓存，直接return export: "+id, "color:green");
             return module.exports;
         }
-
+        log("模块未命中mod map exports缓存, 执行fac.apply: ", id)
         module['exports'] = exports = {};
         deps =  module.deps;
         if (deps) { //如果该模块存在依赖
@@ -171,6 +166,65 @@
         return module.exports;
     };
 
+
+    /**
+     * 根据唯一的url地址加载js文件
+     * @params {function} callback
+     * @params {string} url
+     * @return void
+    **/
+    function loadScript(url, callback) {
+        log('loadScript url: ', url);
+        if (! (url in _loaded_map)) {
+            //为外部调用loadRes()做缓存拦截，AMD已在require层拦截
+            _loaded_map[url] = true;
+            log("url未命中load map缓存，发起请求: ", url);
+            var head = doc.getElementsByTagName('head')[0],
+                script = doc.createElement('script');
+
+            script.type = 'text/javascript';
+            script.src = url;
+            head.appendChild(script);
+
+            if (isFunction(callback)) {
+                if (doc.addEventListener) {
+                    script.addEventListener("load", onload, false);
+                } else { 
+                    script.onreadystatechange = function() {
+                        if (/loaded|complete/.test(script.readyState)) {
+                            script.onreadystatechange = null;
+                            onload();
+                        }
+                    };
+                }
+            }
+        } else {
+            log("%curl命中load map缓存: "+url+"不发起请求，直接执行回调", "color:green");
+            //已加载和执行过的脚本，直接执行回调
+            callback && callback();
+        }
+
+        //Notice: 这里onload()的触发是在define执行完之后的
+        function onload() {
+            //log("onload exec");
+            log("url未命中缓存，加载完毕: ", url);
+            //remove reduce mem leak
+            if (!env.debug) {
+                head.removeChild(script);
+            }
+            var id = url.slice(0, -3),
+                modName = _script_stack.pop(),
+                mod = _module_map[modName];
+            //log('mod', mod);
+            if(mod) {
+                _module_map[id] = { deps: mod.deps, factory: mod.factory };
+            }
+            script = null;
+            callback && callback();
+        }
+
+    }
+
     /**
      * 根据模块名得到md5或pkg后的url路径
      * 并根据依赖表同时加载所有依赖模块
@@ -187,7 +241,7 @@
         }
         var urls = [],
             cache = {};
-        log('getResources id', id);
+        log('getResources id: ', id);
         (function(ids) { 
             for (var i = 0; i < ids.length; i++) {
                 var id = realpath(ids[i]),
@@ -237,7 +291,7 @@
 
         var src = null;
 
-        log('loadResources urls', urls);
+        log('loadResources urls: ', urls);
 
         //非clouda环境下，不处理同时加载多个js，即每一个模块都单独加载，并只对应唯一个url
         if(typeof _CLOUDA_HASHMAP == 'undefined') {
@@ -256,61 +310,6 @@
         //处理好，回调和请求只保留一个
         src && loadScript(src, callback);
     }
-
-     /**
-     * 根据唯一的url地址加载js文件
-     * @params {function} callback
-     * @params {string} url
-     * @return void
-    **/
-    function loadScript(url, callback) {
-        log('loadScript url', url);
-        if (! (url in _loaded_map)) {
-            //为外部调用loadRes()做缓存拦截，AMD已在require层拦截
-            _loaded_map[url] = true;
-
-            var head = doc.getElementsByTagName('head')[0],
-                script = doc.createElement('script');
-
-            script.type = 'text/javascript';
-            script.src = url;
-            head.appendChild(script);
-
-            if (isFunction(callback)) {
-                if (doc.addEventListener) {
-                    script.addEventListener("load", onload, false);
-                } else { 
-                    script.onreadystatechange = function() {
-                        if (/loaded|complete/.test(script.readyState)) {
-                            script.onreadystatechange = null;
-                            onload();
-                        }
-                    };
-                }
-            }
-        } else {
-            //已加载和执行过的脚本，直接执行回调
-            callback && callback();
-        }
-
-        //Notice: 这里onload()的触发是在define执行完之后的
-        function onload() {
-            log("onload exec")
-            //remove reduce mem leak
-            if (!env.debug) {
-                head.removeChild(script);
-            }
-            var id = url.slice(0, -3);
-            //_script_stack.push({ url: url, script: script, id: id });
-            var mod = _script_stack.pop();
-            log('mod', mod);
-            _module_map[id] = { deps: mod.deps, factory: mod.factory };
-            script = null;
-            callback && callback();
-        }
-
-    }
-
 
     /**
      * Same as php realpath, 获取绝对路径
@@ -364,7 +363,6 @@
         if (!env.debug) {
             return;
         }
-        //console.log("内部log");
         var apc = Array.prototype.slice; //same as [].slice; Let Object{} to Array[]
         console && console.log.apply(console, apc.call(arguments)); //return String, same like native console.log(), so choose it.
     }

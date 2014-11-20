@@ -13,22 +13,27 @@
     function Events() {}
 
     Events.prototype.on = function (name, cb) {
-        var cbs = this.events[name];
+        if (!cb) return this;
+        var cache = this.__events || (this.__events = {}),
+            cbs = this.__events[name];
         if (!cbs) {
-            cbs = this.events[name] = [];
+            cbs = this.__events[name] = [];
         }
         cbs.push(cb);
     };
 
-    Event.prototype.emit = function (name, evt) {
-        each(this.events[name], function (cb) {
+    Events.prototype.emit = function (name, evt) {
+        var cache;
+        if (!(cache = this.__events)) return this;
+        each(this.__events[name], function (cb) {
             cb(evt);
+            //cb.apply(this, arguments)
         });
         if (name === 'error') {
             //Now that the error handler was triggered, remove
             //the listeners, since this broken Module instance
             //can stay around for a while in the registry.
-            delete this.events[name];
+            delete this.__events[name];
         }
     };
 
@@ -40,7 +45,9 @@
         var proto = Events.prototype;
 
         for (var p in proto) {
-            if (hasProp(proto, p)) {
+            log(p);
+            //if (hasProp(proto, p)) {
+            if (proto.hasOwnProperty(p)) {
                 receiver[p] = proto[p];
             }
         }
