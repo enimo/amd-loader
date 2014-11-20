@@ -1,11 +1,13 @@
-define(function() {
+define(function(exports) {
 	AMD.emit('loaded', {url: 'def.e.js'});
-	return {
+	/*return {
 	    hello: function(){
 	       console.log("hello~~~")
 	    }
- 	};
+ 	};*/
 
- 	//exports.add = function(x, y){ return x + y; };
+ 	exports.hello = function(x, y){ return x + y; };
+
+ 	return exports;
      
 });

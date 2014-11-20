@@ -44,13 +44,17 @@
         }
 
         //考虑支持的匿名define
-        if (isFunction(id) && arguments.length === 1) {
+        if (isFunction(id) || isArray(id)) {
             var modName = '_anonymous_' + id.toString().replace(/(\r|\n|\s)+/g, '').slice(-50); //先暂存key，暂存function的后50字符
-            factory = id;
+            if (arguments.length === 1){ //匿名&无依赖
+                factory = id;
+                deps = null;
+            } else if (arguments.length === 2){//匿名&有依赖
+                factory = deps;
+                deps = id;
+            }
             id = modName;
-            deps = null;
-
-        //无依赖define
+        //非匿名无依赖define
         } else if (isFunction(deps) && arguments.length === 2) { 
             factory = deps;
             deps = null;
