@@ -45,8 +45,6 @@
         var proto = Events.prototype;
 
         for (var p in proto) {
-            log(p);
-            //if (hasProp(proto, p)) {
             if (proto.hasOwnProperty(p)) {
                 receiver[p] = proto[p];
             }
