@@ -116,8 +116,6 @@
         }
 
         //errback && errback("No module definition");
-        //第一次调用define函数后,require 会被修改为真正执行的函数
-        //throw new Error("No module definition");
     };
 
     /**
@@ -250,7 +248,6 @@
             for (var i = 0; i < ids.length; i++) {
                 var id = realpath(ids[i]),
                     url = null;
-
                 //非clouda环境下
                 //没有hashmap，直接加载url
                 if(typeof _CLOUDA_HASHMAP == 'undefined') {

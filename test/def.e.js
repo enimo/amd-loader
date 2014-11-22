@@ -5,8 +5,9 @@ define(function(exports) {
 	       console.log("hello~~~")
 	    }
  	};*/
+ 	exports = {};
 
- 	exports.hello = function(x, y){ return x + y; };
+ 	exports.hello = function(x){ console.log("hello exports~~~, from: "+x)};
 
  	return exports;
      
