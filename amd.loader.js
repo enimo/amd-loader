@@ -59,6 +59,15 @@
             factory = deps;
             deps = null;
         }
+        
+        //此处选择在 执行 define(id, deps)时 就加载 对应的deps
+        //也可以require(id)时加载该id的deps，实际上也是先执行了require才会去加载并执行对应define的
+        //以下暂时为伪代码:
+        for (var len = deps.length, i = 0; i < len; i++) {
+            //此处需确保deps对应js已经加载成功
+            //loadScript(deps[i]);
+            //require['sync'](deps[i]);
+        }
 
         log("id未命中mod map factory缓存, fac存入: ", id)
         _module_map[id] = {
