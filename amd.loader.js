@@ -105,8 +105,8 @@
             urls;
         if (depsLen) {
             for(var i = 0; i < depsLen; i++) {
-                urls = getResources(deps[i]);
-                loadResources(urls, modDone);
+                urls = getResources(deps[i]); //返回去重后的url列表(包括去掉重复加载和已加载过的模块)
+                loadResources(urls, modDone); //多个url时会以combo形式加载
             }
         } else {
             allDone();
@@ -122,7 +122,7 @@
             log('allDone _module_map stack: ', _module_map);
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
-                exports.push(require['sync'](deps[index]));
+                exports.push(require['sync'](deps[index])); //确保当前require的deps模块已加载，方执行require['sync']
             }
             callback && callback.apply(undefined, exports);
             exports = null;
@@ -147,7 +147,9 @@
             args = [];
 
         if (!hasProp(_module_map, id)) {
-            throw new Error('Required unknown module "' + id + '"');
+            //模块定义部分还未被加载，则可能是define的deps
+            throw new Error('Required unknown module, 该id可能是未支持的define(deps): "' + id + '"');
+            //return false;
         }
 
         module = _module_map[id];
@@ -156,29 +158,48 @@
             module = _module_map[module.alias];
         }
         if (hasProp(module, "exports")) {
-            log("%c模块命中mod map exports缓存，直接return export: "+id, "color:green");
+            log("%c模块:'"+id+"'命中mod map exports缓存，直接return export.", "color:green");
             return module.exports;
         }
-        log("模块未命中mod map exports缓存, 执行fac.apply: ", id);
+        log("模块:'"+id+"'未命中mod map exports缓存, 执行fac.apply");
+
         module['exports'] = exports = {};
         deps =  module.deps;
         if (deps) { //如果该模块存在依赖
             for(var depsLen = deps.length, i = 0; i < depsLen; i++) {
                 dep = deps[i];
-                if (dep === "require") {
-                    args.push(require);
-                } else {
-                    args.push(dep === "module" ? 
-                        module : (dep === "exports" ? 
-                            exports : require['sync'](dep)
-                        )
-                    );
+                log("执行模块:'"+id+"'的依赖模块:'"+dep+"'");
+                switch (dep) {
+                    case 'require': args.push(require); break;
+                    case 'module': args.push(module); break;
+                    case 'exports': args.push(exports); break;
+                    default: 
+                        if(!hasProp(_module_map, dep)) {
+                            log("模块:'"+id+"'的依赖模块:'"+dep+"'未加载");
+                            //如果该依赖模块没有加载过，则加载
+                            args.push(require['sync'](dep));
+                        } else {
+                            log("模块:'"+id+"'的依赖模块:'"+dep+"'已加载");
+                            args.push(require['sync'](dep));
+                        }
                 }
+                /*
+                //为方便打日志，暂使用switch case
+                args.push(dep === "require" ? 
+                                require : (dep === "module" ? 
+                                    module : (dep === "exports" ? 
+                                        exports : require['sync'](dep) 
+                                    )
+                                )
+                );
+                */
             }
+
         }//if deps
 
         var ret = module.factory.apply(undefined, args);
         if (ret !== undefined && ret !== exports) {
+            log("模块:'"+id+"'执行apply(null, '[", args, "]'), 并获得exports: ", ret);
             module.exports = ret;
         }
 
