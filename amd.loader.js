@@ -18,6 +18,7 @@
 
     var _module_map = {}, //已加载并define的模块，key为模块名(id)
         _loaded_map = {}, //已加载的js资源，key为资源URL
+        _anonymous_id = 0, //匿名define计数器
         _script_stack = [];//脚本onload堆栈压入，执行时pop, 不太安全...
     
     var env = { debug: true }; //环境相关变量
@@ -45,7 +46,8 @@
 
         //考虑支持的匿名define
         if (isFunction(id) || isArray(id)) {
-            var modName = '_anonymous_' + id.toString().replace(/(\r|\n|\s)+/g, '').slice(-50); //先暂存key，暂存function的后50字符
+            //var modName = '_anonymous_' + id.toString().replace(/(\r|\n|\s)+/g, '').slice(-50); //先暂存key，暂存function的后50字符
+            var modName = '_anonymous_mod_' + _anonymous_id++; //使用全局计数器id，匿名的define模块一般require时使用pathId进行，保证pathId与modName正确的对应关系即可
             if (arguments.length === 1){ //匿名&无依赖
                 factory = id;
                 deps = null;
@@ -63,10 +65,12 @@
         //此处选择在 执行 define(id, deps)时 就加载 对应的deps
         //也可以require(id)时加载该id的deps，实际上也是先执行了require才会去加载并执行对应define的
         //以下暂时为伪代码:
-        for (var len = deps.length, i = 0; i < len; i++) {
-            //此处需确保deps对应js已经加载成功
-            //loadScript(deps[i]);
-            //require['sync'](deps[i]);
+        if(deps){
+            for (var len = deps.length, i = 0; i < len; i++) {
+                //此处需确保deps对应js已经加载成功
+                //loadScript(deps[i]);
+                //require['sync'](deps[i]);
+            }
         }
 
         log("id未命中mod map factory缓存, fac存入: ", id)
@@ -147,11 +151,15 @@
         }
 
         module = _module_map[id];
+        if(hasProp(module, "alias")){ //兼容require(pathId), 但define(id未使用path的情况)
+            log("require的id名: '"+id+"'非define时定义, alias到define时定义的id: ", module.alias);
+            module = _module_map[module.alias];
+        }
         if (hasProp(module, "exports")) {
             log("%c模块命中mod map exports缓存，直接return export: "+id, "color:green");
             return module.exports;
         }
-        log("模块未命中mod map exports缓存, 执行fac.apply: ", id)
+        log("模块未命中mod map exports缓存, 执行fac.apply: ", id);
         module['exports'] = exports = {};
         deps =  module.deps;
         if (deps) { //如果该模块存在依赖
@@ -223,12 +231,14 @@
             if (!env.debug) {
                 head.removeChild(script);
             }
-            var id = url.slice(0, -3),
+            var pathId = url.slice(0, -3), //兼容以文件路径形式定义的模块id
+                //此处待验证: 是否执行完该模块的define时，直接会触发onload事件，不存在模块间的执行和onload交错
                 modName = _script_stack.pop(),
                 mod = _module_map[modName];
             //log('mod', mod);
-            if(mod) {
-                _module_map[id] = { deps: mod.deps, factory: mod.factory };
+            if(mod && pathId !== modName) {//如果define的id本身就是pathId方式则忽略
+                //_module_map[pathId] = { deps: mod.deps, factory: mod.factory };
+                _module_map[pathId] = { alias: modName };
             }
             script = null;
             callback && callback();
@@ -367,6 +377,10 @@
 
     function isFunction(obj) {
         return Object.prototype.toString.call(obj) === '[object Function]';
+    }
+
+    function isArray(obj) {
+        return Object.prototype.toString.call(obj) === '[object Array]';
     }
 
     function log() {
