@@ -177,7 +177,7 @@
                         if(!hasProp(_module_map, dep)) {
                             log("模块:'"+id+"'的依赖模块:'"+dep+"'未加载");
                             //如果该依赖模块没有加载过，则加载
-                            args.push(require['sync'](dep));
+                            //args.push(require['sync'](dep));
                         } else {
                             log("模块:'"+id+"'的依赖模块:'"+dep+"'已加载");
                             args.push(require['sync'](dep));
