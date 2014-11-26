@@ -19,14 +19,34 @@ Insert the script link into head tag of html files:
 
 ### Using require and exports
 
-Sets up the module with ID of "alpha", that uses require, exports and the module with ID of "beta":
+Typical usage:
+Sets up the module with PATH ID of "test/def.alpha", will load script 'test.def.alpha.js'
 
 ```javascript
-   define("alpha", ["require", "exports", "beta"], function (require, exports, beta) {
+   define("test/def.alpha", function (alpha) {
+        return alpha.hello();
+   });
+```
+
+With dependences:
+
+```javascript
+   define("test/def.alpha", ['test/def.d', 'test/def.e'], function (alpha, d, e) {
+        return {
+          helloa: alpha.hello(),
+          hellod: d.hello(),
+          helloe: e.hello()
+        }
+   });
+```
+
+Sets up the module with ID of "alpha", that uses exports and the module with ID of "beta":
+In this case, module ID 'alpha' will auto generate an alias path ID like: 'test/def.alpha'.
+
+```javascript
+   define("alpha", ["exports", "beta"], function (exports, beta) {
        exports.verb = function() {
            return beta.verb();
-           //Or:
-           return require("beta").verb();
        }
    });
 ```
@@ -43,7 +63,7 @@ An anonymous module that returns an object literal:
    });
 ```
 
-A dependency-free module can define a direct object literal:
+An anonymous and dependency-free module can define a direct object literal:
 
 ```javascript
    define({
@@ -51,6 +71,10 @@ A dependency-free module can define a direct object literal:
        return x + y;
      }
    });
+```
+
+```javascript
+   define({ a: 1, b: 2 });
 ```
 
 ## Future 
