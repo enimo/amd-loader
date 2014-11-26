@@ -1,8 +1,8 @@
 define(function(exports) {
 	AMD.emit('loaded', {url: 'def.e.js'});
 	return {
-	    hello: function(x){
-	       console.log("hello return~~~, from: " + x);
+	    helloe: function(x){
+	       console.log("def.e return helloe, trigger from: " + x);
 	    }
  	};
  	/*

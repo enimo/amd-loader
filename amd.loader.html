@@ -54,29 +54,32 @@
       log("i am loaded: ", e.url);
     });
 
-        
-    require(['test/def.calcu', 'test/def.e', 'test/def.beta'], function(a, b, beta){  
-      log(a);
-      var sum = a.add(1,4);
+    /* 
+    require(['test/def.calcu', 'test/def.e', 'test/def.beta'], function(cal, e, beta){  
+      //log(c);
+      var sum = cal.add(1,4);
       log("sum: ", sum);
-      b.hello('1st');
-      beta.hello("from page")
-      /*
+      e.helloe('1st');
+      beta.hellobt("from page")
+      
       require('test/def.e', function(e){
         e.hello('2nd');
       })
-      */
-    });
-    
-    
-    /*require('test/def.beta', function(b){
-        b.hello('from page');
-    });*/
-    /*
-    require('test/def.alpha', function(a){
-        a.hello('from page');
+      
     });
     */
+    /*
+    require('test/def.beta', function(b){
+        b.hellobt('from page 000');
+    });
+    */
+    require('test/def.alpha', function(a){
+        a.helloa('from page 111');
+        /*require('test/def.beta', function(b){
+            b.hellobt('from page 222');
+        });*/
+    });
+    
 
     /*
     window.bd && bd._qdc && bd._qdc.init({
