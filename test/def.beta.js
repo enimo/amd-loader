@@ -6,7 +6,7 @@ define("beta", ["require", "exports"], function (require, exports) {
        }*/
        return {
        		hello : function (x){
-       			console.log("beta export verb: " + x);
+       			console.log("beta export hello: " + x);
        		}
        }
 });

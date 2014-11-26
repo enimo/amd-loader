@@ -7,7 +7,7 @@ define("alpha", ["require", "exports", "test/def.beta"], function (require, expo
        return {
        		hello : function (x){
        			beta.hello('trigger from alpha');
-       			console.log("alpha export verb:" + x);
+       			console.log("alpha export hello:" + x);
        		}
        }
 });

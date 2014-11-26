@@ -54,29 +54,29 @@
       log("i am loaded: ", e.url);
     });
 
-    
-    //log("dadasd")
-    /*
-    require(['test/def.calcu', 'test/def.e'], function(a, b){  
+        
+    require(['test/def.calcu', 'test/def.e', 'test/def.beta'], function(a, b, beta){  
       log(a);
       var sum = a.add(1,4);
       log("sum: ", sum);
       b.hello('1st');
-      
+      beta.hello("from page")
+      /*
       require('test/def.e', function(e){
         e.hello('2nd');
       })
+      */
     });
-    */
+    
     
     /*require('test/def.beta', function(b){
         b.hello('from page');
     });*/
-    
+    /*
     require('test/def.alpha', function(a){
         a.hello('from page');
     });
-    
+    */
 
     /*
     window.bd && bd._qdc && bd._qdc.init({
