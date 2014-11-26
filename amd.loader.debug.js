@@ -291,7 +291,7 @@
         if (typeof id === 'string') {
             ids = [id];
         } else {
-            return;//目前仅支持读取单个模块名或url
+            return;//目前该函数只支持读取单个模块名或url
         }
         var urls = [],
             cache = {};
@@ -310,16 +310,6 @@
                     }
                 } else {
 
-                    if(typeof _CLOUDA_HASHMAP.deps !== 'undefined'){
-                        var mod = _CLOUDA_HASHMAP.deps[id] || {},
-                            deps_ids = mod['deps']; //递归得到所有依赖资源
-                        deps_ids && arguments.callee(deps_ids);
-                    }
-
-                    if (typeof _CLOUDA_HASHMAP_.res !== 'undefined') {
-                        var res = _CLOUDA_HASHMAP_.res[id] || {};
-                        url = res.pkg ? res.pkg : (res.src || id);
-                    }
                 }
 
                 if (!url || cache[url]) {
@@ -352,15 +342,7 @@
         if(typeof _CLOUDA_HASHMAP == 'undefined') {
             src = (urls.length === 1) ? urls[0] : null; //非clouda环境下不应该存在多个url，故直接置为null不处理
         } else {
-            //clouda环境下，对依赖进行了预前处理，得到多个依赖是进行combo合并加载，但回调保留一个
-            var domain = '';
-            if (window.location.protocol === "http:") {
-                domain = "http://apps.bdimg.com";
-            } else {
-                domain = "https://openapi.baidu.com";
-            }
-            src = (urls.length === 1) ? urls[0] : '/cloudaapi/api-list.js?a=' + encodeURIComponent(urls.join(','));
-            src = domain + src;
+
         }
         //处理好，回调和请求只保留一个
         src && loadScript(src, function(){
@@ -466,24 +448,6 @@
         }
         var apc = Array.prototype.slice; //same as [].slice; Let Object{} to Array[]
         console && console.log.apply(console, apc.call(arguments)); //return String, same like native console.log(), so choose it.
-    }
-
-    /**
-     * 依赖关系映射表数据结构：
-     *   {
-     *     'mod/a': { 
-     *       'deps': ['mod/c', 'mod/d']
-     *     }
-     *   }
-     * 
-    **/
-    function handlerDepends(id, callback) {
-
-    }
-
-    // undergoing
-    function regPlugin(id) {
-        //_plugins_map.push(id);
     }
 
     //防止污染用户后加载的AMD/CMD加载器，统一先使用: _define_, _require_
