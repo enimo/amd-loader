@@ -231,10 +231,8 @@
     **/
     function loadScript(url, callback) {
         log('loadScript url: ', url);
-        if (! (url in _loaded_map)) {
-            //为外部调用loadRes()做缓存拦截，AMD已在require层拦截
-            _loaded_map[url] = true;
-            log("url: "+url+" 未命中load map缓存，发起请求");
+        if (! (url in _loaded_map)) { //为外部调用loadRes()做缓存拦截，AMD已在require层拦截
+            log("url: "+url+" 未命中loaded map(onload)缓存，发起请求");
             var head = doc.getElementsByTagName('head')[0],
                 script = doc.createElement('script');
 
@@ -263,8 +261,11 @@
         //Notice: 这里onload()的触发是在define执行完之后的
         function onload() {
             log("%curl: "+url+" 加载完毕！", "color:green");
-            //remove reduce mem leak
+            //防止模块没加载完时，同一模块继续被require，而此时误认为已加载完毕，故必须在onload()中
+            _loaded_map[url] = true; //FIX: 此处如果一个模块未加载完成时再次加载该模块，则会发生多次new script
+
             if (!env.debug) {
+                //remove reduce mem leak
                 head.removeChild(script);
             }
             var pathId = url.slice(0, -3), //兼容以文件路径形式定义的模块id
