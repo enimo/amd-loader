@@ -18,7 +18,7 @@
     }
   </script>
 
-  <script type="text/javascript" src="./amd.loader.js"></script>
+  <script type="text/javascript" src="./amd.loader.debug.js"></script>
   <script type="text/javascript" src="./test/events.js"></script>
 
   <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
@@ -73,15 +73,24 @@
         b.hellobt('from page 000');
     });
     */
+
+    require('test/def.d', function(d){
+        log(d.value);
+    });
+
+    require('test/def.json', function(json){
+        log("json.a: ", json.a, ", json.b: ", json.b);
+    });
+    /*
     require('test/def.alpha', function(a){
         a.helloa('from page 111');
-        /*
+        
         require('test/def.beta', function(b){
             b.hellobt('from page 222');
         });
-        */
+        
     });
-    
+    */
 
     /*
     window.bd && bd._qdc && bd._qdc.init({

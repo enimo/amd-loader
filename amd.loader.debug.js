@@ -43,9 +43,8 @@
             //log("%cid 命中mod map factory缓存, 直接return: "+id, "color:green")
             return;
         }
-
         //考虑支持的匿名define
-        if (isFunction(id) || isArray(id)) {
+        if (isFunction(id) || isArray(id) || isObject(id)) {
             //var modName = '_anonymous_' + id.toString().replace(/(\r|\n|\s)+/g, '').slice(-50); //先暂存key，暂存function的后50字符
             var modName = '_anonymous_mod_' + _anonymous_id++; //使用全局计数器id，匿名的define模块一般require时使用pathId进行，保证pathId与modName正确的对应关系即可
             if (arguments.length === 1){ //匿名&无依赖
@@ -224,10 +223,15 @@
 
         }//if deps
 
-        var ret = module.factory.apply(undefined, args);
-        if (ret !== undefined && ret !== exports) {
-            log("模块:'"+id+"'执行apply(null, '[", args, "]'), 并获得exports: ", ret);
-            module.exports = ret;
+        if (isObject(module.factory)) { //兼容define({ a: 1, b: 2 });
+            log("模块:'"+id+"', define的factory为JSON数据对象，直接返回");
+            module.exports = module.factory;
+        } else if (isFunction(module.factory)){
+            var ret = module.factory.apply(undefined, args);
+            if (ret !== undefined && ret !== exports) {
+                log("模块:'"+id+"'执行apply(this, '[", args, "]'), 并获得exports: ", ret);
+                module.exports = ret;
+            }
         }
 
         return module.exports;
@@ -474,6 +478,10 @@
 
     function isArray(obj) {
         return Object.prototype.toString.call(obj) === '[object Array]';
+    }
+
+    function isObject(obj) {
+        return Object.prototype.toString.call(obj) === '[object Object]';
     }
 
     function log() {

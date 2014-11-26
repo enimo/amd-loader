@@ -1,0 +1,1 @@
+define({ a: '123aaa', b: "456bbb" });
