@@ -14,7 +14,7 @@ Insert the script link into head tag of html files:
 ```html
   <script type="text/javascript" src="./amd.loader.js"></script>
 ```
-if use it in production, compress first:
+If use it in production, compress and mangle varibles first:
 ```shell
 uglifyjs amd.loader.js -o amd.loader.min.js -m -c
 ```
