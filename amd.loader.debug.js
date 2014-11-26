@@ -228,6 +228,8 @@
             module.exports = module.factory;
         } else if (isFunction(module.factory)){
             var ret = module.factory.apply(undefined, args);
+            //log("ret: ", ret);
+            //当define内使用exports是ret==undefined，故直接使用module.exports即可
             if (ret !== undefined && ret !== exports) {
                 log("模块:'"+id+"'执行apply(this, '[", args, "]'), 并获得exports: ", ret);
                 module.exports = ret;
