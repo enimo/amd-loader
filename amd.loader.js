@@ -64,20 +64,13 @@
         
         //此处选择在 执行 define(id, deps)时 就加载 对应的deps
         //也可以require(id)时加载该id的deps，实际上也是先执行了require才会去加载并执行对应define的
-        //以下暂时为伪代码:
-        if(deps){
-            for (var len = deps.length, i = 0; i < len; i++) {
-                //此处需确保deps对应js已经加载成功
-                //loadScript(deps[i]);
-                //require['sync'](deps[i]);
-            }
-        }
+        //if(deps){}
 
-        log("id未命中mod map factory缓存, fac存入: ", id)
+        log("id: '"+id+"' 未命中factory map缓存, 将fac存入_module_map")
         _module_map[id] = {
-          id: id,
-          deps: deps,
-          factory: factory
+            id: id,
+            deps: deps,
+            factory: factory
         };
         _script_stack.push(id);
 
@@ -100,26 +93,72 @@
             return require['sync'](deps.join(''));
         }
 
-        var depsLen = deps.length,
-            loadCount = depsLen,
-            urls;
+        var loadDeps = filterLoadDeps(deps),//过滤保留的模块id
+            depsLen = loadDeps.length,
+            loadCount = depsLen;
+            //depMod = null;
+            //urls = null;
         if (depsLen) {
             for(var i = 0; i < depsLen; i++) {
-                urls = getResources(deps[i]); //返回去重后的url列表(包括去掉重复加载和已加载过的模块)
-                loadResources(urls, modDone); //多个url时会以combo形式加载
+                var index = i;
+                var depModName = loadDeps[index];
+                var url = getResources(depModName); //返回去重后的url列表(包括去掉重复加载和已加载过的模块)
+                //loadResources(url, modDone); //多个url时会以combo形式加载
+                log("loadDeps outer["+index+"]: ", depModName, 'url: ', url, "_module_map1: ", _module_map);
+                log("loadDeps outer _module_map: ", _module_map);
+
+                loadResources(url, function() {
+                    log("loadDeps inner["+index+"]: name: '", depModName, "', url: '", url, "', _module_map2: ", _module_map);
+                    log("loadDeps inner _module_map: ", _module_map);
+                    modDone(url, depModName);
+                }); //多个url时会以combo形式加载
             }
         } else {
             allDone();
         }
+        
+        function modDone(url, modName) {
 
-        function modDone() {
-            if (! --loadCount) {
-                allDone();
+            var mod = getModule(modName) || {};
+            
+            log("modDone callback url: ", url, 'mod: ', mod);
+            //处理define时的依赖
+            if(hasProp(mod, 'deps') && mod.deps) { //如果新加载的define模块存在依赖
+                var depsMod = mod.deps,
+                    filterDeps = [];
+                log("modDone callback depMod '"+mod.id+"' also have depends: ", depsMod);
+                loadCount--;//依赖本身完成加载后，计数器减掉自身
+
+                filterDeps = filterLoadDeps(depsMod);//过滤保留的模块id
+                var filterLen = filterDeps.length;
+                if(filterLen > 0) {
+                    loadCount += filterLen;
+                    for(var i = 0; i < filterLen; i++) {
+                        var dep = filterDeps[i];
+                        var urls = getResources(dep);
+                        loadResources(urls, function(){
+                            log("modDone: ", mod, " urls: ", urls, "dep: ", dep, " _module_map: ", _module_map);
+                            log("modDone _module_map: ", _module_map);
+                            modDone(urls, dep);
+                        }); //多个url时会以combo形式加载
+                    }
+                } else {
+                    log("filterLen inner: ", filterLen, "loadCount: ", loadCount, 'modName: ', modName);
+                    if (--loadCount <= 0) {
+                        allDone();
+                    }
+                }
+
+            } else {
+                log("filterLen outer: 0, loadCount: ", loadCount, 'modName: ', modName);
+                if (--loadCount <= 0) {
+                    allDone();
+                }
             }
         }
 
         function allDone() {
-            log('allDone _module_map stack: ', _module_map);
+            log('allDone then call require[sync], _module_map stack: ', _module_map);
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
                 exports.push(require['sync'](deps[index])); //确保当前require的deps模块已加载，方执行require['sync']
@@ -152,16 +191,12 @@
             //return false;
         }
 
-        module = _module_map[id];
-        if(hasProp(module, "alias")){ //兼容require(pathId), 但define(id未使用path的情况)
-            log("require的id名: '"+id+"'非define时定义, alias到define时定义的id: ", module.alias);
-            module = _module_map[module.alias];
-        }
+        module = getModule(id) || {};//兼容require(pathId), 但define(id未使用path的情况)
         if (hasProp(module, "exports")) {
-            log("%c模块:'"+id+"'命中mod map exports缓存，直接return export.", "color:green");
+            log("%c模块:'"+id+"'命中exports map缓存，直接return export.", "color:green");
             return module.exports;
         }
-        log("模块:'"+id+"'未命中mod map exports缓存, 执行fac.apply");
+        log("模块:'"+id+"'未命中exports map缓存, 执行fac.apply");
 
         module['exports'] = exports = {};
         deps =  module.deps;
@@ -218,7 +253,7 @@
         if (! (url in _loaded_map)) {
             //为外部调用loadRes()做缓存拦截，AMD已在require层拦截
             _loaded_map[url] = true;
-            log("url未命中load map缓存，发起请求: ", url);
+            log("url: "+url+" 未命中load map缓存，发起请求");
             var head = doc.getElementsByTagName('head')[0],
                 script = doc.createElement('script');
 
@@ -247,7 +282,7 @@
         //Notice: 这里onload()的触发是在define执行完之后的
         function onload() {
             //log("onload exec");
-            log("url未命中缓存，加载完毕: ", url);
+            log("%curl: "+url+" 加载完毕！", "color:green");
             //remove reduce mem leak
             if (!env.debug) {
                 head.removeChild(script);
@@ -350,6 +385,46 @@
         }
         //处理好，回调和请求只保留一个
         src && loadScript(src, callback);
+    }
+
+    /**
+     * 加载deps资源时过滤保留id: module, require, exports
+     * @params {Array} deps
+     * @return {Array} filterDeps
+    **/
+    function filterLoadDeps(depsMod) {    
+        var filterDeps = [];
+        if(depsMod && depsMod.length > 0) {
+            for (var i = 0, len = depsMod.length; i < len; i++) {
+                if (depsMod[i] !== 'require' && depsMod[i] !== 'exports' && depsMod[i] !== 'module' ) {
+                    filterDeps.push(depsMod[i]);
+                }
+            }  
+        }      
+        return filterDeps;
+    }
+
+    /**
+     * 根据模块id获取模块实体对象
+     * @params {string} id
+     * @return {object} module
+    **/
+    function getModule(id) {    
+        //_module_map['enimo'] = {}
+        //log("getModule _module_map1: ", _module_map);
+        if (!hasProp(_module_map, id)) {
+            //模块定义部分还未被加载，则可能是define的deps
+            //log("getModule _module_map2: ", _module_map);
+            //throw new Error('_module_map中不存在该模块: "' + id + '"');
+            log('_module_map中不存在该模块: "' + id + '"');
+            return false;
+        }
+        var module = _module_map[id];
+        if(hasProp(module, "alias")){ //兼容require(pathId), 但define(id未使用path的情况)
+            log("id名: '"+id+"'非define时定义, alias到define时定义的id: ", module.alias);
+            module = _module_map[module.alias];
+        }        
+        return module;
     }
 
     /**
