@@ -55,7 +55,7 @@
     });
 
 
-    /*
+    
     //test depends lot's mods    
     require(['test/def.calcu', 'test/def.e', 'test/def.beta'], function(cal, e, beta){  
       //log(c);
@@ -64,29 +64,28 @@
       e.helloe('1st');
       beta.hellobt("from page")
       
-      //require('test/def.e', function(e){
-      //  e.helloe('2nd');
-      //})
+      require('test/def.e', function(e){
+        e.helloe('2nd');
+      })
       
     });
-    */
+    
 
-    /*
+    
     require('test/def.beta', function(b){
         b.hellobt('from page 000');
     });
-    */
+    
 
     /*
     //test return export
     require('test/def.d', function(d){
         log(d.value);
     });
-    */
     require('test/def.e', function(e){
         e.helloe('2nd');
     })
-
+    */
 
     /*
     //test define({ a: 1, b: 2 })
