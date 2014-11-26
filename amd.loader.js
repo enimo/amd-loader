@@ -186,6 +186,8 @@
         if (deps) { //如果该模块存在依赖
             for(var depsLen = deps.length, i = 0; i < depsLen; i++) {
                 dep = deps[i];
+                /*
+                //为方便打日志，暂使用switch case
                 switch (dep) {
                     case 'require': args.push(require); break;
                     case 'module': args.push(module); break;
@@ -193,16 +195,12 @@
                     default: 
                         args.push(require['sync'](dep));
                 }
-                /*
-                //为方便打日志，暂使用switch case
-                args.push(dep === "require" ? 
-                                require : (dep === "module" ? 
-                                    module : (dep === "exports" ? 
-                                        exports : require['sync'](dep) 
-                                    )
-                                )
-                );
                 */
+                args.push(dep === "require" ? 
+                    require : (dep === "module" ? 
+                        module : ( dep === "exports" ? exports : require['sync'](dep) )
+                    )
+                );
             }
 
         }//if deps

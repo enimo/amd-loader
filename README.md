@@ -20,6 +20,7 @@ Insert the script link into head tag of html files:
 ### Using require and exports
 
 Typical usage:
+
 Sets up the module with PATH ID of "test/def.alpha", will load script 'test.def.alpha.js'
 
 ```javascript
@@ -41,6 +42,7 @@ With dependences:
 ```
 
 Sets up the module with ID of "alpha", that uses exports and the module with ID of "beta":
+
 In this case, module ID 'alpha' will auto generate an alias path ID like: 'test/def.alpha'.
 
 ```javascript
