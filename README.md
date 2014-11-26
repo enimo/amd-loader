@@ -14,6 +14,10 @@ Insert the script link into head tag of html files:
 ```html
   <script type="text/javascript" src="./amd.loader.js"></script>
 ```
+if use it in production, compress first:
+```shell
+uglifyjs amd.loader.js -o amd.loader.min.js -m -c
+```
 
 ## API Examples: <a name="examples"></a>
 
