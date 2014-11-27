@@ -55,7 +55,7 @@
     });
 
 
-    /*
+    
     //test depends lot's mods    
     require(['test/def.calcu', 'test/def.e', 'test/def.beta'], function(cal, e, beta){  
       //log(c);
@@ -69,9 +69,9 @@
       })
       
     });
-    */  
+      
   
-    
+    //test simple one layer depend
     require('test/def.beta', function(b){
         b.hellobt('from page 000');
     });
@@ -87,14 +87,14 @@
     })
     
 
-    /*
+    
     //test define({ a: 1, b: 2 })
     require('test/def.json', function(json){
         log("json.a: ", json.a, ", json.b: ", json.b);
     });
-    */
+    
 
-    /*
+    
     //test alpha depens beta, beta depends def.e
     require('test/def.alpha', function(a){
         a.helloa('from page 111');
@@ -104,7 +104,7 @@
         });
         
     });
-    */
+    
 
     /*
     window.bd && bd._qdc && bd._qdc.init({

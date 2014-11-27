@@ -39,11 +39,10 @@
      * @return void
     **/
     define = function(id, deps, factory) {
-        //已经执行过define不会再执行，一般在loadScript时已拦截，再加载模块不会再执行
         if (hasProp(_module_map, id)) { 
-            return;
+            return; //已经执行过define不会再执行，一般在loadScript时已拦截，再加载模块不会再执行
         }
-        //支持匿名define
+        //匿名define
         if (isFunction(id) || isArray(id) || isObject(id)) {
             //var modName = '_anonymous_' + id.toString().replace(/(\r|\n|\s)+/g, '').slice(-50); //先暂存key，暂存function的后50字符
             var modName = '_anonymous_mod_' + _anonymous_id++; //使用全局计数器id，匿名的define模块一般require时使用pathId进行，保证pathId与modName正确的对应关系即可
@@ -61,9 +60,7 @@
             factory = deps;
             deps = null;
         }
-        
-        //此处选择在 执行 define(id, deps)时 就加载 对应的deps
-        //也可以require(id)时加载该id的deps，实际上也是先执行了require才会去加载并执行对应define的
+        //define是加载deps或者require(id)时加载该id的deps时机一样，实际是先执行了require才会去加载并执行对应define的
 
         _module_map[id] = {
             id: id,
@@ -120,9 +117,7 @@
             //如果新加载的define模块存在有效依赖(排除require, exports, module)
             if (filterLen > 0) {
                 log("modDone callback depMod '"+mod.id+"' also have valid depends: ", filterDeps);
-                loadCount--;//依赖本身完成加载后，计数减掉自身
-
-                loadCount += filterLen;
+                loadCount += filterLen -1; //依赖本身完成加载后，计数减掉自身-1
                 for(var i = 0; i < filterLen; i++) {
                     var dep = filterDeps[i];
                     loadResources(dep, function(depName){
@@ -210,24 +205,21 @@
      * @return void
     **/
     function loadScript(url, callback) {
-        //log('loadScript url: ', url);
         if (hasProp(_loaded_map, url)) {
             log("%curl命中loaded map缓存: "+url+"不发起请求，直接执行回调", "color:#6b8e23");
-            //已加载和执行过的脚本，直接执行回调
-            callback && callback(url);
+            callback && callback(url); //已加载和执行过的脚本，直接执行回调
         }else if(hasProp(_loading_map, url)){//正在加载
             log("%curl命中loading map缓存: "+url+"不发起请求，等待执行回调", "color:#006400");
             _loading_map[url] = _loading_map[url] || [];
             _loading_map[url].push(callback);
         }else{
-            _loading_map[url] = []; //初始化key(url)
-        //}
-        //if (! (url in _loaded_map)) { //为外部调用loadRes()做缓存拦截，AMD已在require层拦截
             log("%curl: "+url+" 未命中loaded&loading map(onload)，发起请求", "color: blue");
-            var script = doc.createElement('script');
+            _loading_map[url] = []; //初始化key(url)
 
+            var script = doc.createElement('script');
             script.type = 'text/javascript';
             script.src = url;
+            script.setAttribute('_md_', '_anymoore_' + Math.random());
             _head.appendChild(script);
 
             if (isFunction(callback)) {
@@ -243,27 +235,21 @@
                 }
             }// end if isFunc
         } 
-        /*else {
-            log("%curl命中load map缓存: "+url+"不发起请求，直接执行回调", "color:#6b8e23");
-            //已加载和执行过的脚本，直接执行回调
-            callback && callback(url);
-        }*/
-
         //Notice: 这里onload()的触发是在define执行完之后的
         function onload() {
             log("%curl: "+url+" 加载完毕！", "color:blue");
             //防止模块没加载完时，同一模块继续被require，而此时误认为已加载完毕，故必须在onload()中
-            _loaded_map[url] = true; //FIX: 此处如果一个模块未加载完成时再次加载该模块，则会发生多次new script
-
+            _loaded_map[url] = true; //FIX: 如果一个模块未加载完成时再次加载该模块，会发生多次new script, FIXED 20141127
             if (!env.debug) {
                 //remove reduce mem leak
                 _head.removeChild(script);
             }
+
             var pathId = url.slice(0, -3), //兼容以文件路径形式定义的模块id
+                modName = _script_stack.pop(),
                 //此处待验证: 是否执行完该模块的define时，直接会触发onload事件，不存在模块间的执行和onload交错
                 //或者使用onload和define的执行顺序肯定是一样的原理，两边两个stack同时push，allDone后统一pop()即得到对应关系
                 //这样的问题是对应关系是alldone之后才建立的，如果在allDone之前有多处调用同一匿名函数，则会进行多次[装载]&执行
-                modName = _script_stack.pop(),
                 mod = _module_map[modName];
             if(mod && pathId !== modName) {//如果define的id本身就是pathId方式则忽略
                 _module_map[pathId] = { alias: modName };
@@ -275,7 +261,6 @@
                 log("%curl: "+url+" 加载完毕, 存在回调数("+cbStack.length+")依次执行", "color:#006400");
                 cbStack = cbStack.reverse(); //保证FIFO按序执行回调
                 while (cb = cbStack.pop()) {
-                    //log("cb["+url+"]: " + cb.toString());
                     cb && cb(url);
                 }
                 _loading_map[url] = null;
@@ -300,7 +285,6 @@
         }
         var urls = [],
             cache = {};
-        //log('getResources id: ', id);
         (function(ids) { 
             for (var i = 0, len = ids.length; i < len; i++) {
                 var id = realpath(ids[i]),

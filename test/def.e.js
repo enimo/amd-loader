@@ -11,5 +11,5 @@ define(function(exports) {
 */
 //define use exports return like below:
 define(['exports'], function(exports) {
-	 	exports.helloe = function(x){ console.log("hello return via exports~~~, trigger from: "+x); };
+	exports.helloe = function(x){ console.log("hello return via exports~~~, trigger from: "+x); };
 });
