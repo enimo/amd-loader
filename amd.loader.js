@@ -207,7 +207,7 @@
     function loadScript(url, callback) {
         if (hasProp(_loaded_map, url)) {
             log("%curl命中loaded map缓存: "+url+"不发起请求，直接执行回调", "color:#6b8e23");
-            callback && callback(url); //已加载和执行过的脚本，直接执行回调
+            callback && callback(); //已加载和执行过的脚本，直接执行回调
         }else if(hasProp(_loading_map, url)){//正在加载
             log("%curl命中loading map缓存: "+url+"不发起请求，等待执行回调", "color:#006400");
             _loading_map[url] = _loading_map[url] || [];
@@ -219,7 +219,7 @@
             var script = doc.createElement('script');
             script.type = 'text/javascript';
             script.src = url;
-            script.setAttribute('_md_', '_anymoore_' + Math.random());
+            script.setAttribute('_md_', '_anymoore_' + url);
             _head.appendChild(script);
 
             if (isFunction(callback)) {
@@ -261,11 +261,11 @@
                 log("%curl: "+url+" 加载完毕, 存在回调数("+cbStack.length+")依次执行", "color:#006400");
                 cbStack = cbStack.reverse(); //保证FIFO按序执行回调
                 while (cb = cbStack.pop()) {
-                    cb && cb(url);
+                    cb && cb();
                 }
                 _loading_map[url] = null;
             }
-            callback && callback(url);
+            callback && callback();
         }
     }
 
