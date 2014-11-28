@@ -27,3 +27,24 @@ window['_CLOUDA_HASHMAP_']['res'] = {
   }
 
 }
+
+
+//fis的map.json
+{
+    "res": {
+        "app/assets/app.css": {
+            "uri": "/static/c/app_128c12b.css",
+            "type": "css"
+        },
+        "app/assets/app.js": {
+            "uri": "/static/j/app_36b0724.js",
+            "type": "js",
+            "deps": [
+                "app/assets/app.css"
+            ]
+        }
+    }
+    'pkg': {
+
+    }
+}
