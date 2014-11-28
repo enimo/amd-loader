@@ -23,7 +23,7 @@
         _loading_map = {}, //正在加载js资料，key为资源URL
         _anonymous_id = 0, //匿名define计数器
         _script_stack = [], //脚本onload堆栈压入，执行时pop, fix: 安全性待加强
-        env = { debug: 1 }; //环境相关变量    
+        env = { debug: 1, ts: 0}; //环境相关变量    
     
     if (typeof _define_ !== 'undefined' && typeof _require_ !== 'undefined') {
         return;
@@ -61,6 +61,7 @@
             deps = null;
         }
         //define是加载deps或者require(id)时加载该id的deps时机一样，实际是先执行了require才会去加载并执行对应define的
+        //log("======== test define order: " + env.ts++, 'id: '+id);
 
         _module_map[id] = {
             id: id,
@@ -94,9 +95,7 @@
         if (depsLen) {
             for(var i = 0; i < depsLen; i++) {
                 var depModName = loadDeps[i];
-                //log("loadDeps outer[]: ", depModName, "_module_map1: ", _module_map);
                 loadResources(depModName, function(depName) {
-                    //log("loadDeps inner[]: name: '", depName, "', _module_map2: ", _module_map);
                     modDone(depName);
                 }); 
             }
@@ -121,7 +120,6 @@
                 for(var i = 0; i < filterLen; i++) {
                     var dep = filterDeps[i];
                     loadResources(dep, function(depName){
-                        //log("modDone inner: ", mod, "dep: ", depName, " _module_map: ", _module_map);
                         modDone(depName);
                     }); //多个url时会以combo形式加载
                 }
@@ -238,6 +236,7 @@
         //Notice: 这里onload()的触发是在define执行完之后的
         function onload() {
             log("%curl: "+url+" 加载完毕！", "color:blue");
+            //log("======== test onload order: " + env.ts++, 'url: '+url);
             //防止模块没加载完时，同一模块继续被require，而此时误认为已加载完毕，故必须在onload()中
             _loaded_map[url] = true; //FIX: 如果一个模块未加载完成时再次加载该模块，会发生多次new script, FIXED 20141127
             if (!env.debug) {
@@ -248,8 +247,10 @@
             var pathId = url.slice(0, -3), //兼容以文件路径形式定义的模块id
                 modName = _script_stack.pop(),
                 //此处待验证: 是否执行完该模块的define时，直接会触发onload事件，不存在模块间的执行和onload交错
-                //或者使用onload和define的执行顺序肯定是一样的原理，两边两个stack同时push，allDone后统一pop()即得到对应关系
-                //这样的问题是对应关系是alldone之后才建立的，如果在allDone之前有多处调用同一匿名函数，则会进行多次[装载]&执行
+                //已验证, 一定是define->onload->define->onload->..., 不会出现交错情况，所以用不着后面的两个stack的解决方案
+                //////以下可忽略了：
+                //////或者使用onload和define的执行顺序肯定是一样的原理，两边两个stack同时push，allDone后统一pop()即得到对应关系
+                //////这样的问题是对应关系是alldone之后才建立的，如果在allDone之前有多处调用同一匿名函数，则会进行多次[装载]&执行
                 mod = _module_map[modName];
             if(mod && pathId !== modName) {//如果define的id本身就是pathId方式则忽略
                 _module_map[pathId] = { alias: modName };
