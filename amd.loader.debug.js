@@ -171,7 +171,7 @@
         module['exports'] = exports = {};
         deps =  module.deps;
         if (deps) { //如果该模块存在依赖
-            for(var depsLen = deps.length, i = 0; i < depsLen; i++) {
+            for (var depsLen = deps.length, i = 0; i < depsLen; i++) {
                 dep = deps[i];
                 args.push(dep === "require" ? 
                     require : (dep === "module" ? 
