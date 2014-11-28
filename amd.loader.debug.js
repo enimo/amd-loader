@@ -269,58 +269,30 @@
             callback && callback();
         }
     }
-
-    /**
-     * 根据模块名得到md5或pkg后的url路径
-     * 并根据依赖表同时加载所有依赖模块
-     * @param {String} id 模块名或模块路径，url etc.
-     * @access public
-     * @return {Array} urls
-    **/
-    function getResources(id) {
-        var ids = [];
-        if (typeof id === 'string') {
-            ids = [id];
-        } else {
-            return;//目前该函数只支持读取单个模块名或url
-        }
-        var urls = [],
-            cache = {};
-        (function(ids) { 
-            for (var i = 0, len = ids.length; i < len; i++) {
-                var id = realpath(ids[i]),
-                    url = null;
-                //非clouda环境下，没有hashmap，直接加载url
-                if(typeof _CLOUDA_HASHMAP == 'undefined') {
-                   url = (id.slice(-3) !== '.js') ? (id + '.js') : id;//没有模块表时，默认为url地址
-                }
-                if (!url || cache[url]) {
-                    continue;
-                }
-                urls.push(url);
-                cache[url] = true;
-            }
-        })(ids);
-
-        return urls;
-    }
     
     /**
-     * 根据给出urls数组，加载资源，大于1时选用combo，处理是否在clouda环境中使用不同加载方式
+     * getResources()函数在非Clouda环境下不再需要
+     * @return void
+    **/
+
+    /**
+     * 根据给出depModName模块名，加载对应资源，根据是否在clouda环境中使用不同加载方式以及是否处理合并关系
      * @params {function} callback
-     * @params {Array} urls
+     * @params {String} depModName
      * @return void
     **/
     function loadResources(depModName, callback) {
-        var urls = getResources(depModName),
-            src = null;
-        log('loadResources urls: ', urls);
+        var url = null;
         //非clouda环境下，不处理同时加载多个js，即每一个模块都单独加载，并只对应唯一个url
         if(typeof _CLOUDA_HASHMAP == 'undefined') {
-            src = (urls.length === 1) ? urls[0] : null; //非clouda环境下不应该存在多个url，故直接置为null不处理
+            var realId = realpath(depModName);
+            url = (realId.slice(-3) !== '.js') ? (realId + '.js') : realId;//没有模块表时，默认为url地址
+        } else {
+            url = getResources && getResources(depModName);
         }
-        //处理好，回调和请求只保留一个
-        src && loadScript(src, function(){
+        log('loadResources url: ', url);
+        //回调和请求只保留一个
+        url && loadScript(url, function(){
             log('loadResources callback depModName: ', depModName);
             callback(depModName);
         });
