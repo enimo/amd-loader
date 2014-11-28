@@ -274,15 +274,37 @@
      * 并根据依赖表同时加载所有依赖模块
      * @param {String} id 模块名或模块路径，url etc.
      * @access public
-     * @return {Array} urls
+     * @return {String} url
     **/
     function getResources(id) {
+        //取决于map表的key值是否为文件路径即带后缀，默认为fis的文件路径格式，非自定义的模块PathId格式
+        var id = (id.slice(-3) !== '.js') ? (id + '.js') : id,
+            url = null;
+
+        if (typeof _CLOUDA_HASHMAP_.res !== 'undefined') {
+            var res = _CLOUDA_HASHMAP_.res[id] || {};
+            url = res.pkg ? res.pkg : (res.src || id);
+        }
+
+        var domain = '';
+        if (window.location.protocol === "http:") {
+            domain = "http://apps.bdimg.com";
+        } else {
+            domain = "https://openapi.baidu.com";
+        }
+        url += domain;
+
+        return url;
+
+        /*
+        //如果需要一次性加载单个模块的所有依赖，则如下（会导致缓存命中率很低）
         var ids = [];
         if (typeof id === 'string') {
             ids = [id];
         } else {
             return;//目前该函数只支持读取单个模块名或url
         }
+
         var urls = [],
             cache = {};
         (function(ids) { 
@@ -314,35 +336,30 @@
             }
         })(ids);
 
-        return urls;
+        //clouda环境下，对依赖进行了预前处理，得到多个依赖是进行combo合并加载，但回调保留一个
+        url = (urls.length === 1) ? urls[0] : '/cloudaapi/api-list.js?a=' + encodeURIComponent(urls.join(','));
+        return url + domain;
+        */
     }
     
     /**
      * 根据给出urls数组，加载资源，大于1时选用combo，处理是否在clouda环境中使用不同加载方式
      * @params {function} callback
-     * @params {Array} urls
+     * @params {String} depModName
      * @return void
     **/
     function loadResources(depModName, callback) {
-        var urls = getResources(depModName),
-            src = null;
-        log('loadResources urls: ', urls);
+        var url = null;
         //非clouda环境下，不处理同时加载多个js，即每一个模块都单独加载，并只对应唯一个url
         if(typeof _CLOUDA_HASHMAP == 'undefined') {
-            src = (urls.length === 1) ? urls[0] : null; //非clouda环境下不应该存在多个url，故直接置为null不处理
+            var realId = realpath(depModName);
+            url = (realId.slice(-3) !== '.js') ? (realId + '.js') : realId;//没有模块表时，默认为url地址
         } else {
-            //clouda环境下，对依赖进行了预前处理，得到多个依赖是进行combo合并加载，但回调保留一个
-            var domain = '';
-            if (window.location.protocol === "http:") {
-                domain = "http://apps.bdimg.com";
-            } else {
-                domain = "https://openapi.baidu.com";
-            }
-            src = (urls.length === 1) ? urls[0] : '/cloudaapi/api-list.js?a=' + encodeURIComponent(urls.join(','));
-            src = domain + src;
+            url = getResources && getResources(depModName);
         }
-        //处理好，回调和请求只保留一个
-        src && loadScript(src, function(){
+        log('loadResources url: ', url);
+        //回调和请求只保留一个
+        url && loadScript(url, function(){
             log('loadResources callback depModName: ', depModName);
             callback(depModName);
         });
