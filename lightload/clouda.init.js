@@ -60,6 +60,11 @@
         "monitor": ["create", "click", "error", "send"]
     };
 
+    if(!window.cloudaapiInitCount){
+        window.cloudaapiInitCount = {};
+        cloudaapiInitCount.lightInit = 0;
+        cloudaapiInitCount.load = 0;
+    }
 
     //API存储栈
     var API_STACK = [];
@@ -120,6 +125,87 @@
           break;
         }
       }
+    }
+
+
+    /**
+    * @pram modules(array) 需要加载的模块
+    */
+    function initStack(modules){
+        var r_apis = modules;
+
+        var api_tmp,type;
+        for (var i = r_apis.length - 1; i >= 0; i--) {
+            if(!clouda.device){
+                clouda.device = {};
+            }
+            if(!clouda.mbaas){
+                clouda.mbaas = {};
+            }
+            if(!clouda.lego){
+                clouda.lego = {};
+            }
+            api_tmp =  device_apis[r_apis[i]]?device_apis[r_apis[i]]:false;
+            var legoApiTmp = lego_apis[r_apis[i]]?lego_apis[r_apis[i]]:false;
+            if(api_tmp){
+                type = "device";
+            }else if(legoApiTmp){
+                type = "lego";
+                api_tmp = legoApiTmp;
+            }else{
+                type="mbaas";
+                api_tmp =  mbaas_apis[r_apis[i]]?mbaas_apis[r_apis[i]]:false;
+            }
+            
+            if (typeof eval("clouda."+type+"['"+r_apis[i]+"']") !== 'undefined'){
+                continue;
+            }
+
+            //对于blendui,不在mbaas和device中,不考虑延迟
+            if(!api_tmp) continue;
+            
+            eval("clouda."+type+"['"+r_apis[i]+"'] ={}");
+            var f_str;
+            for (var j = 0,len= api_tmp.length; j< len; j++) {
+                    f_str= "function(){stack.push({func:'clouda."+type+"."+r_apis[i]+"."+api_tmp[j]+"',arg:arguments});}";
+                    eval("clouda."+type+"['"+r_apis[i]+"']['"+api_tmp[j]+"'] ="+f_str);
+                
+            }
+            
+        }
+
+    }
+    
+
+    function loadScript(url, callback) {
+        var head = document.head || document.getElementsByTagName('head')[0] || document.documentElement, script, options, s;
+        if ( typeof url === 'object') {
+            options = url;
+            url = undefined;
+        }
+        s = options || {};
+        url = url || s.url;
+        callback = callback || s.success;
+        script = document.createElement("script");
+        script.async = s.async || false;
+        script.type = "text/javascript";
+        if (s.charset) {
+            script.charset = s.charset;
+        }
+        script.src = url;
+        head.insertBefore(script, head.firstChild);
+        if (typeof callback === 'function') {
+            if (document.addEventListener){
+                script.addEventListener("load", callback, false);
+            }else{ 
+                script.onreadystatechange = function() {
+                    if (/loaded|complete/.test(script.readyState)) {
+                        script.onreadystatechange = null;
+                        callback();
+                    }
+                };
+            }
+        }
     }
 
 
