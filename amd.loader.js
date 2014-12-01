@@ -44,7 +44,6 @@
         }
         //匿名define
         if (isFunction(id) || isArray(id) || isObject(id)) {
-            //var modName = '_anonymous_' + id.toString().replace(/(\r|\n|\s)+/g, '').slice(-50); //先暂存key，暂存function的后50字符
             var modName = '_anonymous_mod_' + _anonymous_id++; //使用全局计数器id，匿名的define模块一般require时使用pathId进行，保证pathId与modName正确的对应关系即可
             if (arguments.length === 1){ //匿名&无依赖
                 factory = id;
@@ -54,15 +53,11 @@
                 deps = id;
             }
             id = modName;
-
         //非匿名无依赖define
         } else if (isFunction(deps) && arguments.length === 2) { 
             factory = deps;
             deps = null;
         }
-        //define是加载deps或者require(id)时加载该id的deps时机一样，实际是先执行了require才会去加载并执行对应define的
-        //log("======== test define order: " + env.ts++, 'id: '+id);
-
         _module_map[id] = {
             id: id,
             deps: deps,
@@ -80,11 +75,11 @@
      * @access public
      * @return void
     **/
-    require = function(deps, callback, errback) {
+    require = function(deps, callback) {
         if (typeof deps === 'string') {
             deps = [deps];
         }
-        //Hack兼容：如无异步回调，则默认为require的CMD模式
+        //兼容：如无异步回调，则默认为require的CMD模式
         if (deps.length === 1 && arguments.length === 1) {
             return require['sync'](deps.join(''));
         }
@@ -112,10 +107,8 @@
                 filterDeps = filterLoadDeps(mod.deps);//过滤保留的模块id
                 filterLen = filterDeps.length;
             }
-
             //如果新加载的define模块存在有效依赖(排除require, exports, module)
             if (filterLen > 0) {
-                log("modDone callback depMod '"+mod.id+"' also have valid depends: ", filterDeps);
                 loadCount += filterLen -1; //依赖本身完成加载后，计数减掉自身-1
                 for(var i = 0; i < filterLen; i++) {
                     var dep = filterDeps[i];
@@ -131,7 +124,6 @@
         }
 
         function allDone() {
-            log('=== allDone then call require[sync], _module_map stack: ', _module_map);
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
                 exports.push(require['sync'](deps[index])); //确保当前require的deps模块已加载，方执行require['sync']
@@ -139,7 +131,6 @@
             callback && callback.apply(undefined, exports);
             exports = null;
         }
-        //errback && errback("No module definition");
     };
 
     /**
@@ -158,16 +149,13 @@
             args = [];
 
         if (!hasProp(_module_map, id)) {
-            //模块定义部分还未被加载，则可能是define的deps
             throw new Error('Required unknown module, id: "' + id + '"');
         }
 
         module = getModule(id) || {};//兼容require(pathId), 但define(id未使用path的情况)
         if (hasProp(module, "exports")) {
-            log("%c模块:'"+id+"'命中exports map缓存，直接return export.", "color:#6b8e23");
             return module.exports;
         }
-        //log("模块:'"+id+"'未命中exports map缓存, 执行fac.apply");
         module['exports'] = exports = {};
         deps =  module.deps;
         if (deps) { //如果该模块存在依赖
@@ -181,14 +169,12 @@
             }
         }//if deps
 
-        if (isObject(module.factory)) { //兼容define({ a: 1, b: 2 });
-            //log("模块:'"+id+"', define的factory为JSON数据对象，直接返回");
+        if (isObject(module.factory)) { //support define({ a: 1, b: 2 });
             module.exports = module.factory;
         } else if (isFunction(module.factory)){
             var ret = module.factory.apply(undefined, args);
             //当define内使用exports是ret==undefined，故直接使用module.exports即可
             if (ret !== undefined && ret !== exports) {
-                //log("模块:'"+id+"'执行apply(this, '[", args, "]'), 并获得exports: ", ret);
                 module.exports = ret;
             }
         }
@@ -204,14 +190,11 @@
     **/
     function loadScript(url, callback) {
         if (hasProp(_loaded_map, url)) {
-            log("%curl命中loaded map缓存: "+url+"不发起请求，直接执行回调", "color:#6b8e23");
             callback && callback(); //已加载和执行过的脚本，直接执行回调
         }else if(hasProp(_loading_map, url)){//正在加载
-            log("%curl命中loading map缓存: "+url+"不发起请求，等待执行回调", "color:#006400");
             _loading_map[url] = _loading_map[url] || [];
             _loading_map[url].push(callback);
         }else{
-            log("%curl: "+url+" 未命中loaded&loading map(onload)，发起请求", "color: blue");
             _loading_map[url] = []; //初始化key(url)
 
             var script = doc.createElement('script');
@@ -231,26 +214,18 @@
                         }
                     };
                 }
-            }// end if isFunc
+            }
         } 
         //Notice: 这里onload()的触发是在define执行完之后的
         function onload() {
-            log("%curl: "+url+" 加载完毕！", "color:blue");
-            //log("======== test onload order: " + env.ts++, 'url: '+url);
             //防止模块没加载完时，同一模块继续被require，而此时误认为已加载完毕，故必须在onload()中
             _loaded_map[url] = true; //FIX: 如果一个模块未加载完成时再次加载该模块，会发生多次new script, FIXED 20141127
             if (!env.debug) {
-                //remove reduce mem leak
-                _head.removeChild(script);
+                _head.removeChild(script);  //remove reduce mem leak
             }
 
             var pathId = url.slice(0, -3), //兼容以文件路径形式定义的模块id
                 modName = _script_stack.pop(),
-                //此处待验证: 是否执行完该模块的define时，直接会触发onload事件，不存在模块间的执行和onload交错
-                //已验证, 一定是define->onload->define->onload->..., 不会出现交错情况，所以用不着后面的两个stack的解决方案
-                //////以下可忽略了：
-                //////或者使用onload和define的执行顺序肯定是一样的原理，两边两个stack同时push，allDone后统一pop()即得到对应关系
-                //////这样的问题是对应关系是alldone之后才建立的，如果在allDone之前有多处调用同一匿名函数，则会进行多次[装载]&执行
                 mod = _module_map[modName];
             if(mod && pathId !== modName) {//如果define的id本身就是pathId方式则忽略
                 _module_map[pathId] = { alias: modName };
@@ -259,7 +234,6 @@
 
             var cbStack = _loading_map[url] || [];
             if (cbStack.length > 0) {
-                log("%curl: "+url+" 加载完毕, 存在回调数("+cbStack.length+")依次执行", "color:#006400");
                 cbStack = cbStack.reverse(); //保证FIFO按序执行回调
                 while (cb = cbStack.pop()) {
                     cb && cb();
@@ -290,10 +264,7 @@
         } else {
             url = getResources && getResources(depModName);
         }
-        log('loadResources url: ', url);
-        //回调和请求只保留一个
         url && loadScript(url, function(){
-            log('loadResources callback depModName: ', depModName);
             callback(depModName);
         });
     }
@@ -322,12 +293,11 @@
     **/
     function getModule(id) {    
         if (!id || !hasProp(_module_map, id)) {
-            log('_module_map中不存在该模块: "' + id + '"');
+            log('%c_module_map中不存在该模块: "' + id + '"', "color:red");
             return false;
         }
         var module = _module_map[id];
         if(hasProp(module, "alias")){ //兼容require(pathId), 但define(id未使用path的情况)
-            //log("id名: '"+id+"'非define时定义, alias到define时定义的id: ", module.alias);
             module = _module_map[module.alias];
         }        
         return module;
