@@ -84,7 +84,7 @@
         if (typeof deps === 'string') {
             deps = [deps];
         }
-        //Hack兼容：如无异步回调，则默认为require的CMD模式
+        //兼容：如无异步回调，则默认为require的CMD模式
         if (deps.length === 1 && arguments.length === 1) {
             return require['sync'](deps.join(''));
         }
@@ -157,8 +157,7 @@
             deps,
             args = [];
 
-        if (!hasProp(_module_map, id)) {
-            //模块定义部分还未被加载，则可能是define的deps
+        if (!hasProp(_module_map, id)) {//理论上未加载的define模块不会执行到这一层
             throw new Error('Required unknown module, id: "' + id + '"');
         }
 
@@ -181,7 +180,7 @@
             }
         }//if deps
 
-        if (isObject(module.factory)) { //兼容define({ a: 1, b: 2 });
+        if (isObject(module.factory)) { //support define({ a: 1, b: 2 });
             //log("模块:'"+id+"', define的factory为JSON数据对象，直接返回");
             module.exports = module.factory;
         } else if (isFunction(module.factory)){
@@ -291,7 +290,6 @@
             url = getResources && getResources(depModName);
         }
         log('loadResources url: ', url);
-        //回调和请求只保留一个
         url && loadScript(url, function(){
             log('loadResources callback depModName: ', depModName);
             callback(depModName);
@@ -322,7 +320,7 @@
     **/
     function getModule(id) {    
         if (!id || !hasProp(_module_map, id)) {
-            log('_module_map中不存在该模块: "' + id + '"');
+            log('%c_module_map中不存在该模块: "' + id + '"', "color:red");
             return false;
         }
         var module = _module_map[id];
