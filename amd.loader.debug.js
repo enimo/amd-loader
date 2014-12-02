@@ -120,6 +120,7 @@
                 for(var i = 0; i < filterLen; i++) {
                     var dep = filterDeps[i];
                     loadResources(dep, function(depName){
+                        //log("arguments.callee", arguments.callee);
                         modDone(depName);
                     }); //多个url时会以combo形式加载
                 }
@@ -259,8 +260,8 @@
             var cbStack = _loading_map[url] || [];
             if (cbStack.length > 0) {
                 log("%curl: "+url+" 加载完毕, 存在回调数("+cbStack.length+")依次执行", "color:#006400");
-                cbStack = cbStack.reverse(); //保证FIFO按序执行回调
-                while (cb = cbStack.pop()) {
+                //cbStack = cbStack.reverse(); //保证FIFO按序执行回调, 已使用shift()代替
+                while (cb = cbStack.shift()) {
                     cb && cb();
                 }
                 _loading_map[url] = null;
