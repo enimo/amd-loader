@@ -17,7 +17,6 @@
     var define;
     var _op = Object.prototype;
     var _os = _op.toString;
-    var _head = doc.getElementsByTagName('head')[0];
 
     var _moduleMap = {};
     var _loadedMap = {};
@@ -26,7 +25,7 @@
     var _definedStack = [];
     var env = {debug: 1, ts: 0};
 
-    if (typeof _define_ !== 'undefined' && typeof _require_ !== 'undefined') {
+    if (typeof win._define_ !== 'undefined' && typeof win._require_ !== 'undefined') {
         return;
     }
 
@@ -87,16 +86,18 @@
         if (depsLen) {
             for (var i = 0; i < depsLen; i++) {
                 var depModName = loadDeps[i];
-                loadResources(depModName, function(depName) {
-                    modDone(depName);
-                });
+                loadResources(depModName, onResolved);
             }
         }
         else {
-            allDone();
+            allResolved();
         }
 
-        function modDone(modName) {
+        function onResolved(depName) {
+            modResolved(depName);
+        }
+
+        function modResolved(modName) {
             var mod = getModule(modName) || {};
             var filterDeps = [];
             var filterLen = 0;
@@ -108,19 +109,17 @@
                 loadCount += filterLen - 1;
                 for (var i = 0; i < filterLen; i++) {
                     var dep = filterDeps[i];
-                    loadResources(dep, function(depName) {
-                        modDone(depName);
-                    });
+                    loadResources(dep, onResolved);
                 }
             }
             else {
                 if (--loadCount <= 0) {
-                    allDone();
+                    allResolved();
                 }
             }
         }
 
-        function allDone() {
+        function allResolved() {
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
                 exports.push(require.sync(deps[index]));
@@ -194,7 +193,7 @@
         }
         else {
             _loadingMap[url] = [];
-
+            var _head = doc.getElementsByTagName('head')[0];
             var script = doc.createElement('script');
             script.type = 'text/javascript';
             script.src = url;
@@ -259,7 +258,7 @@
     **/
     function loadResources(depModName, callback) {
         var url = null;
-        if (typeof _CLOUDA_HASHMAP === 'undefined') {
+        if (typeof win._CLOUDA_HASHMAP === 'undefined') {
             var realId = realpath(depModName);
             url = (realId.slice(-3) !== '.js') ? (realId + '.js') : realId;
         }
@@ -333,7 +332,7 @@
             }
         }
         path = path.join('/');
-        /*return path.indexOf('/') === 0 ? path : '/' + path; //暂时不在path前加'/'*/
+        /* return path.indexOf('/') === 0 ? path : '/' + path; //暂时不在path前加'/' */
         return path;
     }
 

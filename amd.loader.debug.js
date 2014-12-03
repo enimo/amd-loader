@@ -15,8 +15,7 @@
 
     var require, define,
         _op = Object.prototype,
-        _os = _op.toString,
-        _head = doc.getElementsByTagName('head')[0];
+        _os = _op.toString;
 
     var _module_map = {}, //已加载并define的模块，key为模块名(id)
         _loaded_map = {}, //已加载的js资源，key为资源URL
@@ -95,15 +94,13 @@
         if (depsLen) {
             for(var i = 0; i < depsLen; i++) {
                 var depModName = loadDeps[i];
-                loadResources(depModName, function(depName) {
-                    modDone(depName);
-                }); 
+                loadResources(depModName, onResolved);
             }
         } else {
-            allDone();
+            allResolved();
         }
         
-        function modDone(modName) {
+        function modResolved(modName) {
             var mod = getModule(modName) || {},
                 filterDeps = [],
                 filterLen = 0;
@@ -115,24 +112,25 @@
 
             //如果新加载的define模块存在有效依赖(排除require, exports, module)
             if (filterLen > 0) {
-                log("modDone callback depMod '"+mod.id+"' also have valid depends: ", filterDeps);
+                log("modResolved callback depMod '"+mod.id+"' also have valid depends: ", filterDeps);
                 loadCount += filterLen -1; //依赖本身完成加载后，计数减掉自身-1
                 for(var i = 0; i < filterLen; i++) {
                     var dep = filterDeps[i];
-                    loadResources(dep, function(depName){
-                        //log("arguments.callee", arguments.callee);
-                        modDone(depName);
-                    }); //多个url时会以combo形式加载
+                    loadResources(dep, onResolved);
                 }
             } else {
                 if (--loadCount <= 0) {
-                    allDone();
+                    allResolved();
                 }
             }
         }
 
-        function allDone() {
-            log('=== allDone then call require[sync], _module_map stack: ', _module_map);
+        function onResolved(depName) {
+            modResolved(depName);
+        }
+
+        function allResolved() {
+            log('=== allResolved then call require[sync], _module_map stack: ', _module_map);
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
                 exports.push(require['sync'](deps[index])); //确保当前require的deps模块已加载，方执行require['sync']
@@ -214,6 +212,8 @@
             log("%curl: "+url+" 未命中loaded&loading map(onload)，发起请求", "color: blue");
             _loading_map[url] = []; //初始化key(url)
 
+            var _head = doc.getElementsByTagName('head')[0];
+
             var script = doc.createElement('script');
             script.type = 'text/javascript';
             script.src = url;
@@ -224,6 +224,7 @@
                 if (doc.addEventListener) {
                     script.addEventListener("load", onload, false);
                 } else { 
+                    /* IE下，define和onload的执行顺序是否能保证*/
                     script.onreadystatechange = function() {
                         if (/loaded|complete/.test(script.readyState)) {
                             script.onreadystatechange = null;
@@ -249,8 +250,8 @@
                 //此处待验证: 是否执行完该模块的define时，直接会触发onload事件，不存在模块间的执行和onload交错
                 //已验证, 一定是define->onload->define->onload->..., 不会出现交错情况，所以用不着后面的两个stack的解决方案
                 //////以下可忽略了：
-                //////或者使用onload和define的执行顺序肯定是一样的原理，两边两个stack同时push，allDone后统一pop()即得到对应关系
-                //////这样的问题是对应关系是alldone之后才建立的，如果在allDone之前有多处调用同一匿名函数，则会进行多次[装载]&执行
+                //////或者使用onload和define的执行顺序肯定是一样的原理，两边两个stack同时push，allResolved后统一pop()即得到对应关系
+                //////这样的问题是对应关系是allResolved之后才建立的，如果在allResolved之前有多处调用同一匿名函数，则会进行多次[装载]&执行
                 mod = _module_map[modName];
             if(mod && pathId !== modName) {//如果define的id本身就是pathId方式则忽略
                 _module_map[pathId] = { alias: modName };
