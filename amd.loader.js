@@ -4,7 +4,7 @@
  * Baidu LightApp Loader Provider
  *
  * @create: 2014.11.3
- * @update: 2014.11.6
+ * @update: 2014.12.4
  * @author: enimo <enimong@gmail.com>
  * @see: define, require, requirejs
  * AMD Draft: https://github.com/amdjs/amdjs-api/wiki/AMD
@@ -361,6 +361,6 @@
     }
 
     define.amd = {};
-    define.version = '0.9';
+    define.version = '0.9.0';
 
 })(window, document);
