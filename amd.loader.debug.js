@@ -94,7 +94,7 @@
         if (depsLen) {
             for(var i = 0; i < depsLen; i++) {
                 var depModName = loadDeps[i];
-                loadResources(depModName, onResolved);
+                loadResources(depModName, modResolved);
             }
         } else {
             allResolved();
@@ -116,7 +116,8 @@
                 loadCount += filterLen -1; //依赖本身完成加载后，计数减掉自身-1
                 for(var i = 0; i < filterLen; i++) {
                     var dep = filterDeps[i];
-                    loadResources(dep, onResolved);
+                    //log("modResolved: ", arguments.callee);
+                    loadResources(dep, arguments.callee);
                 }
             } else {
                 if (--loadCount <= 0) {
@@ -125,9 +126,9 @@
             }
         }
 
-        function onResolved(depName) {
-            modResolved(depName);
-        }
+        //function onResolved(depName) {
+            //modResolved(depName);
+        //}
 
         function allResolved() {
             log('=== allResolved then call require[sync], _module_map stack: ', _module_map);

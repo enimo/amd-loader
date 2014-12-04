@@ -21,8 +21,8 @@
     var _moduleMap = {};
     var _loadedMap = {};
     var _loadingMap = {};
-    var _anonymousId = 0;
     var _definedStack = [];
+    var _anonymousId = 0;
     var env = {debug: 1, ts: 0};
 
     if (typeof win._define_ !== 'undefined' && typeof win._require_ !== 'undefined') {
@@ -86,15 +86,11 @@
         if (depsLen) {
             for (var i = 0; i < depsLen; i++) {
                 var depModName = loadDeps[i];
-                loadResources(depModName, onResolved);
+                loadResources(depModName, modResolved);
             }
         }
         else {
             allResolved();
-        }
-
-        function onResolved(depName) {
-            modResolved(depName);
         }
 
         function modResolved(modName) {
@@ -109,7 +105,7 @@
                 loadCount += filterLen - 1;
                 for (var i = 0; i < filterLen; i++) {
                     var dep = filterDeps[i];
-                    loadResources(dep, onResolved);
+                    loadResources(dep, arguments.callee);
                 }
             }
             else {
