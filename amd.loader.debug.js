@@ -286,11 +286,12 @@
     function loadResources(depModName, callback) {
         var url = null;
         //非clouda环境下，不处理同时加载多个js，即每一个模块都单独加载，并只对应唯一个url
-        if(typeof _CLOUDA_HASHMAP == 'undefined') {
+        if (typeof getResources !== 'undefined') {
+            url = getResources(depModName);
+        }
+        else {
             var realId = realpath(depModName);
             url = (realId.slice(-3) !== '.js') ? (realId + '.js') : realId;//没有模块表时，默认为url地址
-        } else {
-            url = getResources && getResources(depModName);
         }
         log('loadResources url: ', url);
         url && loadScript(url, function(){

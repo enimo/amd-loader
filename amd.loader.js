@@ -238,15 +238,6 @@
         }
     }
 
-
-    /**
-     * @description getResources()函数在非Clouda环境下不再需要
-     * @deprecated  You don't need to call getResource if not CloudaEnv,Since version 0.9.
-    **/
-    function getResources() {
-
-    }
-
     /**
      * @description 根据给出depModName模块名，加载对应资源，根据是否在clouda环境中使用不同加载方式以及是否处理合并关系
      * @param {string} depModName Depends module name
@@ -254,12 +245,9 @@
     **/
     function loadResources(depModName, callback) {
         var url = null;
-        if (typeof win._CLOUDA_HASHMAP === 'undefined') {
+        if (depModName) {
             var realId = realpath(depModName);
             url = (realId.slice(-3) !== '.js') ? (realId + '.js') : realId;
-        }
-        else {
-            url = getResources && getResources(depModName);
         }
         url && loadScript(url, function() {
             callback(depModName);
