@@ -276,6 +276,9 @@
      * getResources()函数在非Clouda环境下不再需要
      * @return void
     **/
+    function getResources() {
+
+    }
 
     /**
      * 根据给出depModName模块名，加载对应资源，根据是否在clouda环境中使用不同加载方式以及是否处理合并关系
