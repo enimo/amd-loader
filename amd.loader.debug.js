@@ -132,6 +132,13 @@
 
         function allResolved() {
             log('=== allResolved then call require[sync], _module_map stack: ', _module_map);
+            // 处理同一文件内有多个define的情况
+            if (_script_stack.length > 0) {
+                var _modId = null;
+                while (_modId = _script_stack.shift()) {
+                    _modId && require['sync'](_modId);
+                }
+            }
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
                 exports.push(require['sync'](deps[index])); //确保当前require的deps模块已加载，方执行require['sync']
@@ -276,9 +283,9 @@
      * getResources()函数在非Clouda环境下不再需要
      * @return void
     **/
-    function getResources() {
+    /*function getResources() {
 
-    }
+    }*/
 
     /**
      * 根据给出depModName模块名，加载对应资源，根据是否在clouda环境中使用不同加载方式以及是否处理合并关系
@@ -287,6 +294,11 @@
      * @return void
     **/
     function loadResources(depModName, callback) {
+        var module = getModule(depModName, 'weak') || {};
+        if (hasProp(module, "exports")) {
+            callback(depModName);
+            return;
+        }
         var url = null;
         //非clouda环境下，不处理同时加载多个js，即每一个模块都单独加载，并只对应唯一个url
         if (typeof getResources !== 'undefined') {
@@ -323,10 +335,15 @@
     /**
      * 根据模块id获取模块实体对象
      * @params {string} id
+     * @param {string} checkLevel 校验级别强或弱(默认强校验，并输出错误日志)
      * @return {object} module
     **/
-    function getModule(id) {    
+    function getModule(id, checkLevel) {    
+        var checkLevel = checkLevel || 'strong'; 
         if (!id || !hasProp(_module_map, id)) {
+            if (checkLevel !== 'strong') {
+                return {};
+            }
             log('%c_module_map中不存在该模块: "' + id + '"', "color:red");
             return false;
         }

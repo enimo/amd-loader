@@ -116,6 +116,13 @@
         }
 
         function allResolved() {
+            // 处理同一文件内有多个define的情况
+            if (_definedStack.length > 0) {
+                var _modId = null;
+                while (_modId = _definedStack.shift()) {
+                    _modId && require['sync'](_modId);
+                }
+            }
             var exports = [];
             for (var index = 0; index < depsLen; index++) {
                 exports.push(require.sync(deps[index]));
@@ -244,6 +251,11 @@
      * @param {Function} callback callbak after loaded
     **/
     function loadResources(depModName, callback) {
+        var module = getModule(depModName, 'weak') || {};
+        if (hasProp(module, "exports")) {
+            callback(depModName);
+            return;
+        }
         var url = null;
         if (depModName) {
             var realId = realpath(depModName);
@@ -274,10 +286,15 @@
     /**
      * @description 根据模块id获取模块实体对象
      * @param {string} id mod id
+     * @param {string} checkLevel 校验级别强或弱(默认强校验，并输出错误日志)
      * @return {Object} module
     **/
-    function getModule(id) {
+    function getModule(id, checkLevel) {
+        var checkLevel = checkLevel || 'strong'; 
         if (!id || !hasProp(_moduleMap, id)) {
+            if (checkLevel !== 'strong') {
+                return {};
+            }
             log('%c_moduleMap中不存在该模块: "' + id + '"', 'color:red');
             return false;
         }
